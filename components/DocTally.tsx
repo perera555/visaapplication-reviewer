@@ -118,13 +118,13 @@ export function DocTally({ country: initialCountry, visaType: initialType, selec
             <div className="font-bold">required documents ready{getCountry(country) ? ` for ${getCountry(country)!.name}` : ""}</div>
             <div className="text-sm text-white/90">Recommended: {recDone}/{recommended.length} · {pct === 100 ? "All required documents ready ✅" : `${missingRequired.length} required document(s) still missing`}</div>
           </div>
-          <label className="cursor-pointer rounded-xl bg-white px-4 py-2 text-sm font-bold text-emerald-700 shadow hover:bg-emerald-50">
-            📤 Upload all documents at once
+          <label className="cursor-pointer text-xs font-semibold text-white/90 underline underline-offset-2 hover:text-white">
+            or upload many at once
             <input type="file" multiple className="hidden" accept=".pdf,image/*,.doc,.docx,.txt" onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
           </label>
         </div>
         <div className="mt-3 h-2.5 rounded-full bg-white/30"><div className="h-2.5 rounded-full bg-white transition-all" style={{ width: `${pct}%` }} /></div>
-        <p className="mt-2 text-xs text-white/90">Upload everything together (auto-matched), or use 📎 Upload on each row to add documents one by one.</p>
+        <p className="mt-2 text-sm font-medium text-white">📎 Upload each document one by one using the Upload button on its row below.</p>
         {busy && <p className="mt-2 animate-pulse text-sm">{busy}</p>}
       </div>
 
@@ -157,7 +157,7 @@ export function DocTally({ country: initialCountry, visaType: initialType, selec
                   <td className="p-3 align-top">{r.mandatory ? <span className="chip bg-rose-50 text-rose-700">Required</span> : <span className="chip bg-slate-100 text-slate-600">Recommended</span>}</td>
                   <td className="p-3 align-top text-xs">
                     {files[r.id]?.length ? files[r.id].map((f) => <div key={f}>📄 {f}</div>) : ok ? <span className="text-emerald-700">✅ Ticked</span> : <span className="text-rose-600">❌ Missing</span>}
-                    <label className="mt-2 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 font-semibold text-emerald-700 hover:bg-emerald-100">
+                    <label className={`mt-2 inline-flex cursor-pointer items-center gap-1 rounded-lg px-3 py-1.5 font-semibold ${ok ? "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-emerald-600 text-white shadow hover:bg-emerald-700"}`}>
                       📎 {files[r.id]?.length ? "Add more" : "Upload"}
                       <input type="file" multiple className="hidden" accept=".pdf,image/*,.doc,.docx,.txt" onChange={(e) => { uploadFor(r.id, e.target.files); e.target.value = ""; }} />
                     </label>

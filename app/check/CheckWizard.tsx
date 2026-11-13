@@ -214,15 +214,17 @@ export function CheckWizard() {
       {step === 2 && (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <div className="card border-2 border-dashed border-indigo-200 bg-indigo-50/40 text-center">
-              <div className="text-4xl">📤</div>
-              <h2 className="mt-2 text-lg font-bold">Upload all your documents at once</h2>
-              <p className="text-sm text-slate-600">PDF, JPG or PNG. We read PDFs and file names to match each document to the checklist automatically.</p>
-              <label className="btn-primary mt-4 cursor-pointer">
-                Choose files
+            <div className="card flex flex-wrap items-center gap-3 border-indigo-200 bg-indigo-50/40">
+              <div className="text-3xl">📎</div>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-bold">Upload your documents one by one</h2>
+                <p className="text-sm text-slate-600">Click <b>Upload</b> next to each document in the checklist below (PDF, JPG or PNG). Each file goes exactly where it belongs.</p>
+              </div>
+              <label className="cursor-pointer text-xs font-semibold text-indigo-700 underline-offset-2 hover:underline">
+                or upload many at once (auto-match)
                 <input type="file" multiple className="hidden" accept=".pdf,image/*,.doc,.docx,.txt" onChange={(e) => { uploadAll(e.target.files); e.target.value = ""; }} />
               </label>
-              {busy && <p className="mt-3 animate-pulse text-sm font-medium text-indigo-700">{busy}</p>}
+              {busy && <p className="w-full animate-pulse text-sm font-medium text-indigo-700">{busy}</p>}
             </div>
 
             {unmatched.length > 0 && (
@@ -284,8 +286,8 @@ export function CheckWizard() {
                           )}
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          <label className="btn-ghost cursor-pointer px-3 py-1.5 text-xs">
-                            Upload
+                          <label className={`cursor-pointer px-3 py-1.5 text-xs ${ok ? "btn-ghost" : "btn-primary"}`}>
+                            📎 {files.length ? "Add more" : "Upload"}
                             <input type="file" multiple className="hidden" accept=".pdf,image/*,.doc,.docx" onChange={(e) => { attachTo(r.id, e.target.files); e.target.value = ""; }} />
                           </label>
                           <label className="flex items-center gap-1.5 text-xs text-slate-600" title="Tick if you have this document but will send it later">
