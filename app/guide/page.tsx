@@ -1,0 +1,164 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { PageHero } from "@/components/ui";
+
+export const metadata: Metadata = { title: "User & admin guide" };
+
+type Step = { title: string; body: string; link?: [string, string] };
+
+const CUSTOMER: { section: string; icon: string; steps: Step[] }[] = [
+  {
+    section: "Check your documents & success rate",
+    icon: "📂",
+    steps: [
+      { title: "Open Document Review", body: "Click “Check my visa” at the top of any page.", link: ["/check", "Open Document Review"] },
+      { title: "Choose country & visa type", body: "Select the destination country, your nationality and the visa type (visit, student, work, family and more). The right side shows how to apply for that country." },
+      { title: "Fill in your profile", body: "Enter your name, contact details, passport expiry, travel dates, job, income, savings, travel history and any previous refusals. Be honest, because this decides your success rate." },
+      { title: "Upload your documents", body: "Click “Choose files” and select all your documents at once (PDF, JPG, PNG). Each file is matched to the checklist automatically. If a file is not recognised, choose what it is from the dropdown." },
+      { title: "Upload or tick each item", body: "For any checklist item you can upload a file separately, or tick “I have it” if you will send it later. Use “Add other supporting documents” for anything not on the list." },
+      { title: "See your status & success rate", body: "Step 4 shows your success rate (0–100%), your status (Ready / Almost / Not ready / High risk), the missing required documents, what helps or hurts your chances, and your next steps." },
+      { title: "Send it to our team", body: "Type a message and click “Send application”. Our team receives your checklist, score and files and will contact you. You can also print or save the page as a PDF." },
+    ],
+  },
+  {
+    section: "My visa was refused",
+    icon: "🚫",
+    steps: [
+      { title: "Open Refusal Review", body: "Choose the country that refused you and the visa type.", link: ["/refusal", "Open Refusal Review"] },
+      { title: "Add the refusal letter", body: "Upload the refusal letter PDF or paste its full text, including the officer's reasons." },
+      { title: "Read the reasons found", body: "Each refusal reason is explained in plain language, quoted from your letter, with the documents and actions that fix it." },
+      { title: "Follow the re-apply plan", body: "Follow the step-by-step re-application plan and tick off the document checklist as you collect each item." },
+      { title: "Write your letter", body: "Click “Reconsideration request”, “Appeal letter” or “Re-application cover letter”. The Letter Writer opens with your reasons already filled in." },
+    ],
+  },
+  {
+    section: "Write a letter to the embassy / high commission",
+    icon: "✍️",
+    steps: [
+      { title: "Choose the letter type", body: "Reconsideration, appeal, re-application cover, explanation, cover, sponsor, invitation or employer letter.", link: ["/letter", "Open Letter Writer"] },
+      { title: "Fill in the details", body: "Your details, the embassy, reference number and refusal date, then answer each refusal reason with your evidence." },
+      { title: "Check the preview", body: "The letter updates live. You can type directly into it. Replace every [bracketed] placeholder." },
+      { title: "Download", body: "Download as PDF, copy it, or save it as .txt. Sign the printed letter before you submit it." },
+    ],
+  },
+  {
+    section: "Fill the visa application form",
+    icon: "📝",
+    steps: [
+      { title: "Guided form", body: "Fill each section (personal, passport, contact, travel, employment, family, history). Answers are saved on your device automatically.", link: ["/form", "Open Application Form"] },
+      { title: "Download the form", body: "At the last section, click “Download completed form (PDF)”." },
+      { title: "Official PDF form", body: "Switch to “Fill an official PDF form” and upload the embassy's fillable PDF. Matching fields are filled from your guided answers. Check every field, then download the filled PDF." },
+    ],
+  },
+  {
+    section: "Install the app",
+    icon: "📲",
+    steps: [
+      { title: "Use the top banner", body: "Click “Install now” or “How to install” in the purple banner at the top of the page.", link: ["/install", "Install instructions"] },
+      { title: "Any device", body: "Works on Windows, Mac, Linux, iPhone, iPad and Android, with no app store needed." },
+    ],
+  },
+];
+
+const ADMIN: { section: string; icon: string; steps: Step[] }[] = [
+  {
+    section: "First-time setup",
+    icon: "🛠️",
+    steps: [
+      { title: "Open Admin login", body: "Scroll to the bottom of the home page and click “🔐 Admin login”.", link: ["/admin/login", "Admin login"] },
+      { title: "Create the admin account", body: "The first time, you will see “Create the admin account”. Enter your name, email, mobile number (international format, e.g. +94771234567) and a password of 8+ characters. Alternatively set ADMIN_EMAIL / ADMIN_PASSWORD on the server." },
+      { title: "Connect permanent storage", body: "On Vercel: Project → Storage → create “Upstash for Redis” and connect it. Without it, data on Vercel is temporary." },
+      { title: "Connect email & SMS for password reset", body: "Add RESEND_API_KEY + EMAIL_FROM (email) and TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_FROM (SMS) as environment variables, then redeploy. Check the status under Account & settings." },
+      { title: "Optional: AI analysis", body: "Add ANTHROPIC_API_KEY to turn on AI refusal analysis and “Improve with AI” for letters." },
+    ],
+  },
+  {
+    section: "Review customer applications",
+    icon: "📥",
+    steps: [
+      { title: "Open Applications", body: "The dashboard lists every application with country, visa type, success rate and status." },
+      { title: "Open an application", body: "Click a customer to see their checklist (✅ provided, ❌ missing), uploaded files (click to download), profile answers and message." },
+      { title: "Update the status", body: "Click a status: new → reviewing → docs-requested → submitted → approved / refused." },
+      { title: "Add notes & contact", body: "Write internal notes (saved when you click away). Use “Email customer” or “WhatsApp” to request missing documents." },
+    ],
+  },
+  {
+    section: "Add required documents for customers",
+    icon: "📋",
+    steps: [
+      { title: "Open “Required documents”", body: "Choose a country (or All) and a visa type (or All)." },
+      { title: "Describe the document", body: "Enter the name, instructions and recognition keywords (words in the file name or PDF so uploads are matched automatically)." },
+      { title: "Required or recommended", body: "Tick “Required” to make it mandatory. Missing required documents lower the customer's success rate." },
+      { title: "Done", body: "It appears immediately in the customer's checklist and on the country page with an “Added by our team” label." },
+    ],
+  },
+  {
+    section: "Share support documents",
+    icon: "📚",
+    steps: [
+      { title: "Open “Support documents”", body: "Upload a file (max 900 KB) or paste a link (Google Drive, Dropbox, official site) for templates, samples and guides." },
+      { title: "Target it", body: "Choose the country and visa type it applies to, or All." },
+      { title: "Customers see it", body: "It shows on the Document Review page and the country guide, ready to download." },
+    ],
+  },
+  {
+    section: "Forgot password",
+    icon: "🔑",
+    steps: [
+      { title: "Click “Forgot password?”", body: "On the admin login page.", link: ["/admin/forgot", "Reset password"] },
+      { title: "Request a code", body: "Enter your admin email or phone and choose Email, SMS or Both. A 6-digit code is sent and is valid for 10 minutes." },
+      { title: "Set a new password", body: "Enter the code and your new password. You are signed in automatically. After 5 wrong codes, request a new one." },
+      { title: "Keep details current", body: "Keep your email and mobile up to date under Account & settings so codes reach you." },
+    ],
+  },
+];
+
+function GuideSection({ items, color }: { items: typeof CUSTOMER; color: string }) {
+  return (
+    <div className="space-y-8">
+      {items.map((s) => (
+        <div key={s.section} className="card">
+          <h3 className="flex items-center gap-3 text-xl font-bold">
+            <span className={`grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br ${color} text-2xl shadow-lg [transform:perspective(300px)_rotateY(-14deg)]`}>{s.icon}</span>
+            {s.section}
+          </h3>
+          <ol className="mt-5 space-y-4">
+            {s.steps.map((st, i) => (
+              <li key={st.title} className="flex gap-4">
+                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${color} font-black text-white shadow-md`}>{i + 1}</span>
+                <div>
+                  <div className="font-semibold">{st.title}</div>
+                  <p className="text-sm text-slate-600">{st.body}</p>
+                  {st.link && <Link href={st.link[0]} className="mt-1 inline-block text-sm font-semibold text-indigo-600 hover:underline">{st.link[1]} →</Link>}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function GuidePage() {
+  return (
+    <>
+      <PageHero icon="📖" title="Step-by-step guide" subtitle="How to use VisaReview, for customers and for the admin team.">
+        <div className="mt-4 flex flex-wrap gap-2">
+          <a href="#customer" className="btn glass text-white hover:bg-white/15">👤 Customer guide</a>
+          <a href="#admin" className="btn glass text-white hover:bg-white/15">🔐 Admin guide</a>
+        </div>
+      </PageHero>
+      <div className="container-x grid gap-12 py-10">
+        <section id="customer" className="scroll-mt-24">
+          <h2 className="h-title mb-6">👤 Customer guide</h2>
+          <GuideSection items={CUSTOMER} color="from-indigo-500 to-violet-500" />
+        </section>
+        <section id="admin" className="scroll-mt-24">
+          <h2 className="h-title mb-6">🔐 Admin guide</h2>
+          <GuideSection items={ADMIN} color="from-amber-500 to-pink-500" />
+        </section>
+      </div>
+    </>
+  );
+}
