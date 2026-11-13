@@ -6,13 +6,19 @@ import { useRef, useState, type InputHTMLAttributes, type ReactNode } from "reac
 export function PasswordInput({ className = "", ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
   const [show, setShow] = useState(false);
   return (
-    <div className="relative">
-      <input {...props} type={show ? "text" : "password"} className={`input pr-20 ${className}`} />
+    <div className="relative flex items-center">
+      <input {...props} type={show ? "text" : "password"} className={`input ${className}`} style={{ paddingRight: "5.5rem" }} />
       <button
         type="button"
-        onClick={() => setShow((s) => !s)}
-        className="absolute inset-y-0 right-1 my-1 rounded-lg px-2.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setShow((s) => !s);
+        }}
+        className="absolute right-1.5 z-10 rounded-lg border border-line bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
         aria-label={show ? "Hide password" : "Show password"}
+        aria-pressed={show}
       >
         {show ? "🙈 Hide" : "👁 Show"}
       </button>

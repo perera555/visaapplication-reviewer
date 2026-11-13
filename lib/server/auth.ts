@@ -50,8 +50,10 @@ export const normPhone = (p: string) => p.replace(/[^\d+]/g, "");
 export async function getAdmins(): Promise<Admin[]> {
   const admins = await listAll<Admin>("admins");
   if (admins.length === 0 && process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+    // Deterministic id so every server instance (and every restart) agrees on the same admin,
+    // otherwise a session created on one instance would be unknown on another.
     const seeded: Admin = {
-      id: crypto.randomUUID(),
+      id: `env-${createHash("sha256").update(normEmail(process.env.ADMIN_EMAIL)).digest("hex").slice(0, 24)}`,
       name: "Administrator",
       email: normEmail(process.env.ADMIN_EMAIL),
       phone: normPhone(process.env.ADMIN_PHONE ?? ""),
