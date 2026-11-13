@@ -19,7 +19,7 @@ export function LoginForm({ setup = false }: { setup?: boolean }) {
       const j = await r.json();
       if (j.admin) router.replace("/admin");
       else {
-        setMode(setup ? (j.needsSetup ? "setup" : "closed") : "login");
+        setMode(setup ? (j.ownerCreate ? "setup" : "closed") : "login");
         setKeyRequired(Boolean(j.setupKeyRequired));
       }
     }).catch(() => setMode("login"));
@@ -48,8 +48,8 @@ export function LoginForm({ setup = false }: { setup?: boolean }) {
   return (
     <form onSubmit={submit} className="rounded-3xl border border-white/20 bg-white p-7 shadow-2xl shadow-indigo-900/50 [transform:rotateX(4deg)]">
       <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-3xl shadow-xl shadow-indigo-500/40 [transform:translateZ(30px)]">🔐</div>
-      <h1 className="mt-4 text-center text-2xl font-black">{mode === "setup" || mode === "closed" ? "Owner setup" : "Admin sign in"}</h1>
-      <p className="mt-1 text-center text-sm text-slate-500">{mode === "setup" ? "First-time setup for the system owner. Other admins are added by an admin from the dashboard." : "Agency team access only"}</p>
+      <h1 className="mt-4 text-center text-2xl font-black">{mode === "setup" || mode === "closed" ? "Create admin user" : "Admin sign in"}</h1>
+      <p className="mt-1 text-center text-sm text-slate-500">{mode === "setup" ? "Owner only: enter the owner setup key to create a new admin user." : "Agency team access only"}</p>
 
       {mode === "closed" ? (
         <div className="mt-6 space-y-3 text-center">
