@@ -6,6 +6,7 @@ import { APPLY_MODE_INFO, VISA_TYPES, getApplyMode, getCountryProfile, getProces
 import { ApplyModeBadge } from "@/components/ApplyModeBadge";
 import { PageHero } from "@/components/ui";
 import { CountryExtras } from "./CountryExtras";
+import { DocTally } from "@/components/DocTally";
 
 export function generateStaticParams() {
   return COUNTRIES.map((c) => ({ code: c.code.toLowerCase() }));
@@ -30,6 +31,14 @@ export default async function CountryPage({ params }: PageProps<"/countries/[cod
           <Link href={`/check?country=${country.code}`} className="btn-primary">Review my documents</Link>
         </div>
       </PageHero>
+
+      <div className="container-x pt-10">
+        <section className="card">
+          <h2 className="text-xl font-black">🧮 Tally my documents vs. {country.name} requirements</h2>
+          <p className="mb-4 text-sm text-slate-500">Choose your visa type, then tick or upload the documents you have. You see right away which required documents are still missing.</p>
+          <DocTally country={country.code} selectable />
+        </section>
+      </div>
 
       <div className="container-x grid gap-6 py-10 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">

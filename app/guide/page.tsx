@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHero } from "@/components/ui";
+import { DocTally } from "@/components/DocTally";
 
 export const metadata: Metadata = { title: "User & admin guide" };
 
@@ -145,11 +146,17 @@ export default function GuidePage() {
     <>
       <PageHero icon="📖" title="Step-by-step guide" subtitle="How to use VisaReview, for customers and for the admin team.">
         <div className="mt-4 flex flex-wrap gap-2">
+          <a href="#tally" className="btn glass text-white hover:bg-white/15">🧮 Tally my documents</a>
           <a href="#customer" className="btn glass text-white hover:bg-white/15">👤 Customer guide</a>
           <a href="#admin" className="btn glass text-white hover:bg-white/15">🔐 Admin guide</a>
         </div>
       </PageHero>
       <div className="container-x grid gap-12 py-10">
+        <section id="tally" className="card scroll-mt-24">
+          <h2 className="h-title">🧮 Tally your documents with the visa requirements</h2>
+          <p className="mb-4 mt-1 text-sm text-slate-500">Pick the country and visa type, then tick or upload what you have. Required documents you are missing are shown in red.</p>
+          <DocTally selectable />
+        </section>
         <section id="customer" className="scroll-mt-24">
           <h2 className="h-title mb-6">👤 Customer guide</h2>
           <GuideSection items={CUSTOMER} color="from-indigo-500 to-violet-500" />
