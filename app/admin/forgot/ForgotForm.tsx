@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Field, Stepper } from "@/components/ui";
+import { Field, Stepper, PasswordInput } from "@/components/ui";
 
 export function ForgotForm() {
   const router = useRouter();
@@ -84,8 +84,8 @@ export function ForgotForm() {
           <p className="rounded-xl bg-indigo-50 p-3 text-sm text-indigo-800">{info}</p>
           {devCode && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Dev code: <b className="font-mono text-lg">{devCode}</b></p>}
           <Field label="6-digit code"><input className="input text-center font-mono text-2xl tracking-[0.5em]" inputMode="numeric" maxLength={6} required value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} /></Field>
-          <Field label="New password"><input className="input" type="password" minLength={8} required autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} /></Field>
-          <Field label="Confirm new password"><input className="input" type="password" minLength={8} required autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></Field>
+          <Field label="New password"><PasswordInput minLength={8} required autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} /></Field>
+          <Field label="Confirm new password"><PasswordInput minLength={8} required autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></Field>
           {error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
           <button className="btn-primary w-full py-3" disabled={busy}>{busy ? "Saving…" : "Set new password"}</button>
           <button type="button" className="w-full text-sm text-indigo-600" onClick={() => sendCode()}>Resend code</button>

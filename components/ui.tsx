@@ -1,6 +1,24 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
+
+/** Password field with a show / hide toggle so users can see what they type. */
+export function PasswordInput({ className = "", ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input {...props} type={show ? "text" : "password"} className={`input pr-20 ${className}`} />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        className="absolute inset-y-0 right-1 my-1 rounded-lg px-2.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+        aria-label={show ? "Hide password" : "Show password"}
+      >
+        {show ? "🙈 Hide" : "👁 Show"}
+      </button>
+    </div>
+  );
+}
 
 /** Card that tilts in 3D following the pointer. */
 export function TiltCard({ children, className = "", max = 10 }: { children: ReactNode; className?: string; max?: number }) {

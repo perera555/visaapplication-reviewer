@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { COUNTRIES, flag, getCountry } from "@/lib/countries";
 import { VISA_TYPES, visaTypeName } from "@/lib/requirements";
 import type { Application, ApplicationStatus, CustomRequirement, SupportDoc } from "@/lib/types";
-import { Field } from "@/components/ui";
+import { Field, PasswordInput } from "@/components/ui";
 import { Registrations } from "./Registrations";
 
 type Me = { id: string; name: string; email: string; phone: string };
@@ -445,8 +445,8 @@ function AdminUsers({ me }: { me: Me }) {
         <Field label="Full name"><input className="input" required value={f.name} onChange={set("name")} /></Field>
         <Field label="Email (login)"><input className="input" type="email" required value={f.email} onChange={set("email")} /></Field>
         <Field label="Mobile (for SMS reset codes)" hint="International format, e.g. +94771234567"><input className="input" type="tel" value={f.phone} onChange={set("phone")} /></Field>
-        <Field label="Password (min 8 characters)"><input className="input" type="password" required minLength={8} autoComplete="new-password" value={f.password} onChange={set("password")} /></Field>
-        <Field label="Confirm password"><input className="input" type="password" required minLength={8} autoComplete="new-password" value={f.confirm} onChange={set("confirm")} /></Field>
+        <Field label="Password (min 8 characters)"><PasswordInput required minLength={8} autoComplete="new-password" value={f.password} onChange={set("password")} /></Field>
+        <Field label="Confirm password"><PasswordInput required minLength={8} autoComplete="new-password" value={f.confirm} onChange={set("confirm")} /></Field>
         {error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
         <button className="btn-primary w-full" disabled={busy}>{busy ? "Creating…" : "Create admin"}</button>
       </form>
@@ -525,8 +525,8 @@ function Account({ me, setMe, cfg }: { me: Me; setMe: (m: Me) => void; cfg: Conf
         <Field label="Email (password reset codes)"><input className="input" type="email" value={f.email} onChange={set("email")} /></Field>
         <Field label="Mobile (SMS reset codes)" hint="International format, e.g. +94771234567"><input className="input" type="tel" value={f.phone} onChange={set("phone")} /></Field>
         <h3 className="label pt-2">Change password</h3>
-        <Field label="Current password"><input className="input" type="password" autoComplete="current-password" value={f.currentPassword} onChange={set("currentPassword")} /></Field>
-        <Field label="New password (min 8)"><input className="input" type="password" autoComplete="new-password" value={f.newPassword} onChange={set("newPassword")} /></Field>
+        <Field label="Current password"><PasswordInput autoComplete="current-password" value={f.currentPassword} onChange={set("currentPassword")} /></Field>
+        <Field label="New password (min 8)"><PasswordInput autoComplete="new-password" value={f.newPassword} onChange={set("newPassword")} /></Field>
         {error && <p className="text-sm text-rose-600">{error}</p>}
         {msg && <p className="text-sm text-emerald-600">{msg}</p>}
         <button className="btn-primary">Save changes</button>

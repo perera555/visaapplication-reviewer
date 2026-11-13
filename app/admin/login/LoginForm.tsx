@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Field } from "@/components/ui";
+import { Field, PasswordInput } from "@/components/ui";
 
 /** Admin sign-in. The first-owner setup form is only reachable at /admin/setup (never from the footer link). */
 export function LoginForm({ setup = false }: { setup?: boolean }) {
@@ -63,12 +63,12 @@ export function LoginForm({ setup = false }: { setup?: boolean }) {
               <Field label="Name"><input className="input" value={f.name} onChange={set("name")} /></Field>
               <Field label="Email"><input className="input" type="email" required value={f.email} onChange={set("email")} /></Field>
               <Field label="Mobile (for reset codes)" hint="International format, e.g. +94771234567"><input className="input" type="tel" value={f.phone} onChange={set("phone")} /></Field>
-              {keyRequired && <Field label="Owner setup key" hint="Only the system owner has this key."><input className="input" type="password" required autoComplete="off" value={f.setupKey} onChange={set("setupKey")} /></Field>}
+              {keyRequired && <Field label="Owner setup key" hint="Only the system owner has this key."><PasswordInput required autoComplete="off" value={f.setupKey} onChange={set("setupKey")} /></Field>}
             </>
           ) : (
             <Field label="Email or phone"><input className="input" required autoComplete="username" value={f.identifier} onChange={set("identifier")} /></Field>
           )}
-          <Field label="Password"><input className="input" type="password" required minLength={mode === "setup" ? 8 : 1} autoComplete={mode === "setup" ? "new-password" : "current-password"} value={f.password} onChange={set("password")} /></Field>
+          <Field label="Password"><PasswordInput required minLength={mode === "setup" ? 8 : 1} autoComplete={mode === "setup" ? "new-password" : "current-password"} value={f.password} onChange={set("password")} /></Field>
           {error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
           <button className="btn-primary w-full py-3" disabled={busy}>{busy ? "Please wait…" : mode === "setup" ? "Create account" : "Sign in"}</button>
           {mode === "login" && (
