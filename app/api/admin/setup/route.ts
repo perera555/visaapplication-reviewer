@@ -1,11 +1,21 @@
-import { createSession, getAdmins, hashPassword, normEmail, normPhone, publicAdmin, saveAdmin, type Admin } from "@/lib/server/auth";
+import { timingSafeEqual } from "crypto";
+import { createSession, getAdmins, hashPassword, normEmail, normPhone, publicAdmin, saveAdmin, setupPolicy, type Admin } from "@/lib/server/auth";
 
-// First-run: create the first admin account. Disabled once any admin exists.
-// If ADMIN_SETUP_KEY is set, it must be supplied.
+// First-run: create the first admin account. Disabled once any admin exists; see setupPolicy().
+
 export async function POST(req: Request) {
+  const policy = setupPolicy();
+  if (!policy.allowed) return Response.json({ error: "Admin setup is disabled. Ask the system owner to sign in, or set ADMIN_EMAIL and ADMIN_PASSWORD on the server." }, { status: 403 });
   if ((await getAdmins()).length > 0) return Response.json({ error: "An admin already exists. Please sign in." }, { status: 403 });
   const b = (await req.json()) as { name?: string; email?: string; phone?: string; password?: string; setupKey?: string };
-  if (process.env.ADMIN_SETUP_KEY && b.setupKey !== process.env.ADMIN_SETUP_KEY) return Response.json({ error: "Invalid setup key." }, { status: 403 });
+  if (policy.keyRequired) {
+    const a = Buffer.from(policy.key);
+    const g = Buffer.from(b.setupKey ?? "");
+    if (!policy.key || a.length !== g.length || !timingSafeEqual(a, g)) {
+      await new Promise((r) => setTimeout(r, 600));
+      return Response.json({ error: "Invalid setup key." }, { status: 403 });
+    }
+  }
   if (!b.email?.includes("@")) return Response.json({ error: "A valid email is required." }, { status: 400 });
   if (!b.password || b.password.length < 8) return Response.json({ error: "Password must be at least 8 characters." }, { status: 400 });
   const admin: Admin = {

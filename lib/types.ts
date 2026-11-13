@@ -38,3 +38,49 @@ export type Application = {
 };
 
 export const MAX_STORED_FILE = 900 * 1024;
+
+// ---------- customer registration (company side) ----------
+export type RegistrationStatus = "registered" | "documents-pending" | "in-process" | "submitted" | "approved" | "refused" | "closed";
+
+export const REG_STATUS_LABEL: Record<RegistrationStatus, string> = {
+  registered: "Registered", "documents-pending": "Documents pending", "in-process": "In process",
+  submitted: "Visa submitted", approved: "Visa approved", refused: "Visa refused", closed: "Closed",
+};
+
+export type RegistrationDetails = {
+  fullName: string; surname: string; givenNames: string; dob: string; sex: string; nationality: string;
+  passportNo: string; passportExpiry: string; nationalId: string; email: string; phone: string; address: string;
+  occupation: string; employer: string; maritalStatus: string; destination: string; visaType: string; notes: string;
+};
+
+export const EMPTY_REG_DETAILS: RegistrationDetails = {
+  fullName: "", surname: "", givenNames: "", dob: "", sex: "", nationality: "", passportNo: "", passportExpiry: "",
+  nationalId: "", email: "", phone: "", address: "", occupation: "", employer: "", maritalStatus: "", destination: "",
+  visaType: "", notes: "",
+};
+
+export type RegDocument = { id: string; category: string; name: string; type: string; size: number; uploadedAt: string; by: "customer" | "admin" };
+
+export type Registration = {
+  id: string;
+  regNo: string;
+  createdAt: string;
+  updatedAt: string;
+  status: RegistrationStatus;
+  details: RegistrationDetails;
+  photo?: { type: string; size: number };
+  documents: RegDocument[];
+  adminNotes: string;
+};
+
+/** Lightweight index row used for fast search ("is this person registered?"). */
+export type RegistrationIndex = { id: string; regNo: string; fullName: string; passportNo: string; email: string; phone: string; nationalId: string; destination: string; status: RegistrationStatus; createdAt: string; docs: number; hasPhoto: boolean };
+
+export const DOC_CATEGORIES = [
+  "Passport", "National ID", "Birth certificate", "Bank statement", "Payslips", "Employment letter", "Business registration",
+  "Tax returns", "Offer / admission letter", "Academic certificates & transcripts", "IELTS / PTE / English waiver",
+  "Sponsor documents", "Marriage certificate", "Property documents", "Travel itinerary / tickets", "Hotel / accommodation",
+  "Travel insurance", "Previous visas", "Refusal letter", "CV", "Police clearance", "Medical report", "Other",
+];
+
+export const MAX_REG_FILE = 4 * 1024 * 1024; // per upload (Vercel request limit is ~4.5 MB)

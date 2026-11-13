@@ -21,7 +21,7 @@ export function SiteHeader() {
             <Link
               key={n.href}
               href={n.href}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+              className={`whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition ${
                 path.startsWith(n.href)
                   ? dark ? "bg-white/15 text-white" : "bg-indigo-50 text-indigo-700"
                   : dark ? "text-white/80 hover:bg-white/10 hover:text-white" : "text-slate-600 hover:bg-slate-100"

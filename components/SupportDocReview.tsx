@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DocReview, ReviewContext } from "@/lib/docReview";
 import { downloadBytes, textToPdf } from "@/lib/pdf";
@@ -52,13 +52,18 @@ export function SupportDocReview({ items, context, autoRun = false }: { items: R
     }
   }
 
+  // auto-review every new document exactly once
+  const started = useRef(new Set<string>());
+  const idsKey = items.map((i) => i.id).join("|");
   useEffect(() => {
     if (!autoRun) return;
-    items.forEach((it) => {
-      if (!reviews[it.id]) run(it);
-    });
+    for (const it of items) {
+      if (started.current.has(it.id)) continue;
+      started.current.add(it.id);
+      run(it);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRun, items]);
+  }, [autoRun, idsKey]);
 
   const done = Object.values(reviews).filter((r) => r !== "loading") as DocReview[];
   const errorDocs = done.filter((r) => r.verdict === "error").length;

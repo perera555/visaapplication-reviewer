@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { COUNTRIES, flag, getCountry } from "@/lib/countries";
-import { APPLY_MODE_INFO, VISA_TYPES, getApplyMode, getCountryProfile, getProcessSteps, getRequirements, type DocRequirement, type VisaTypeId } from "@/lib/requirements";
+import { APPLY_MODE_INFO, ENGLISH_TYPES, VISA_TYPES, getApplyMode, getCountryProfile, getProcessSteps, getRequirements, type DocRequirement, type VisaTypeId } from "@/lib/requirements";
 import { ApplyModeBadge } from "@/components/ApplyModeBadge";
 import { EMPTY_PROFILE, assess, classifyDocument, type Profile } from "@/lib/scoring";
 import type { CustomRequirement, SupportDoc } from "@/lib/types";
@@ -11,8 +11,21 @@ import { Field, ScoreGauge, Stepper, TiltCard } from "@/components/ui";
 import { SupportDocsList } from "@/components/SupportDocsList";
 import { SupportDocReview } from "@/components/SupportDocReview";
 import { CvSection } from "@/components/CvSection";
+import { DetailsPanel } from "@/components/DetailsPanel";
+import { SaveBar } from "@/components/SaveBar";
+import { activeId, debounce, getFile, getItem, putFile, putItem } from "@/lib/savedStore";
+import { extractDetails, iso3to2, parseAmount, type Detail } from "@/lib/extractDetails";
 
 type Attached = { file: File; reqId: string; auto: boolean };
+type WizardSave = {
+  country: string;
+  visaType: VisaTypeId;
+  profile: Profile;
+  manual: Record<string, boolean>;
+  details: Detail[];
+  attached: { fileKey: string; reqId: string; auto: boolean }[];
+  extras: { id: string; name: string; fileKey?: string }[];
+};
 type Extra = { id: string; name: string; file?: File };
 
 const STEPS = ["Destination & visa", "Your profile", "Documents", "Status & success rate"];
@@ -30,33 +43,86 @@ export function CheckWizard() {
   const [custom, setCustom] = useState<CustomRequirement[]>([]);
   const [support, setSupport] = useState<SupportDoc[]>([]);
   const [busy, setBusy] = useState<string>("");
+  const [details, setDetails] = useState<Detail[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [draftId, setDraftId] = useState("");
+  const [savedAt, setSavedAt] = useState("");
 
-  // restore draft + ?type=
+  // restore the saved application (incl. uploaded files) + ?type= / ?country= / ?draft=
   useEffect(() => {
-    try {
-      const d = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "null");
-      if (d) {
-        setCountry(d.country ?? "GB");
-        setVisaType(d.visaType ?? "visit");
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("draft") || (params.get("new") ? "" : activeId("application")) || crypto.randomUUID();
+      setDraftId(id);
+      activeId("application", id);
+      const saved = params.get("new") ? undefined : await getItem<WizardSave>(id);
+      if (saved) {
+        const d = saved.data;
+        setCountry(d.country);
+        setVisaType(d.visaType);
         setProfile({ ...EMPTY_PROFILE, ...d.profile });
         setManual(d.manual ?? {});
+        setDetails(d.details ?? []);
+        const att: Attached[] = [];
+        for (const a of d.attached ?? []) {
+          const file = await getFile(a.fileKey);
+          if (file) att.push({ file, reqId: a.reqId, auto: a.auto });
+        }
+        setAttached(att);
+        const ex: Extra[] = [];
+        for (const e of d.extras ?? []) ex.push({ id: e.id, name: e.name, file: e.fileKey ? await getFile(e.fileKey) : undefined });
+        setExtras(ex);
+        setSavedAt(saved.updatedAt);
+      } else if (!params.get("new")) {
+        try {
+          const d = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "null");
+          if (d) {
+            setCountry(d.country ?? "GB");
+            setVisaType(d.visaType ?? "visit");
+            setProfile({ ...EMPTY_PROFILE, ...d.profile });
+            setManual(d.manual ?? {});
+          }
+        } catch {}
       }
-    } catch {}
-    const params = new URLSearchParams(window.location.search);
-    const t = params.get("type");
-    if (t && VISA_TYPES.some((v) => v.id === t)) setVisaType(t as VisaTypeId);
-    const c = params.get("country");
-    if (c && getCountry(c)) setCountry(c.toUpperCase());
-    setLoaded(true);
+      const t = params.get("type");
+      if (t && VISA_TYPES.some((v) => v.id === t)) setVisaType(t as VisaTypeId);
+      const c = params.get("country");
+      if (c && getCountry(c)) setCountry(c.toUpperCase());
+      setLoaded(true);
+    })();
   }, []);
 
+  // auto-save everything (debounced): answers, ticks, details and the uploaded files themselves
+  const autosave = useMemo(
+    () =>
+      debounce(async (id: string, s: { country: string; visaType: VisaTypeId; profile: Profile; manual: Record<string, boolean>; details: Detail[]; attached: Attached[]; extras: Extra[] }) => {
+        const data: WizardSave = {
+          country: s.country,
+          visaType: s.visaType,
+          profile: s.profile,
+          manual: s.manual,
+          details: s.details,
+          attached: await Promise.all(s.attached.map(async (a) => ({ fileKey: await putFile(a.file), reqId: a.reqId, auto: a.auto }))),
+          extras: await Promise.all(s.extras.map(async (e) => ({ id: e.id, name: e.name, fileKey: e.file ? await putFile(e.file) : undefined }))),
+        };
+        await putItem({ id, kind: "application", title: s.profile.fullName || "Untitled application", subtitle: `${getCountry(s.country)?.name} · ${VISA_TYPES.find((v) => v.id === s.visaType)?.name} · ${s.attached.length} file(s)`, data });
+        setSavedAt(new Date().toISOString());
+      }, 800),
+    [],
+  );
+
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || !draftId) return;
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ country, visaType, profile, manual }));
     } catch {}
-  }, [loaded, country, visaType, profile, manual]);
+    autosave(draftId, { country, visaType, profile, manual, details, attached, extras });
+  }, [loaded, draftId, country, visaType, profile, manual, details, attached, extras, autosave]);
+
+  function newApplication() {
+    if (!confirm("Start a new application? Your current one stays saved under My Saved Work.")) return;
+    window.location.href = "/check?new=1";
+  }
 
   // admin-added requirements + support documents
   useEffect(() => {
@@ -65,7 +131,7 @@ export function CheckWizard() {
     fetch(`/api/support-docs?${qs}`).then((r) => r.json()).then(setSupport).catch(() => setSupport([]));
   }, [country, visaType]);
 
-  const requirements: DocRequirement[] = useMemo(() => [...getRequirements(country, visaType), ...custom], [country, visaType, custom]);
+  const requirements: DocRequirement[] = useMemo(() => [...getRequirements(country, visaType, { englishWaiver: profile.englishWaiver }), ...custom], [country, visaType, custom, profile.englishWaiver]);
 
   const docs = useMemo(
     () =>
@@ -102,6 +168,7 @@ export function CheckWizard() {
       const f = list[i];
       setBusy(`Reading ${i + 1}/${list.length}: ${f.name}`);
       const text = await readText(f);
+      grabDetails(text, f.name);
       const match = classifyDocument(f.name, text, requirements);
       if (match) nextAttached.push({ file: f, reqId: match.id, auto: true });
       else nextUnmatched.push(f);
@@ -111,15 +178,49 @@ export function CheckWizard() {
     setBusy("");
   }
 
-  function attachTo(reqId: string, files: FileList | null) {
+  function grabDetails(text: string, source: string) {
+    if (!text.trim()) return;
+    const found = extractDetails(text, source);
+    if (found.length) setDetails((d) => [...d, ...found.filter((f) => !d.some((x) => x.key === f.key && x.value === f.value))]);
+  }
+
+  async function attachTo(reqId: string, files: FileList | null) {
     if (!files?.length) return;
-    setAttached((a) => [...a, ...[...files].map((file) => ({ file, reqId, auto: false }))]);
+    const list = [...files];
+    setAttached((a) => [...a, ...list.map((file) => ({ file, reqId, auto: false }))]);
+    for (const f of list) {
+      setBusy(`Reading details from ${f.name}…`);
+      grabDetails(await readText(f), f.name);
+    }
+    setBusy("");
+  }
+
+  function fillProfileFromDetails() {
+    const get = (k: string) => details.find((d) => d.key === k)?.value;
+    const fullName = get("fullName") ?? [get("givenNames"), get("surname")].filter(Boolean).join(" ");
+    const nat = get("nationality");
+    const natCode = nat ? (nat.length === 3 ? iso3to2(nat) : COUNTRIES.find((c) => c.name.toLowerCase() === nat.toLowerCase())?.code ?? "") : "";
+    const balance = parseAmount(get("bankBalance"));
+    const score = parseAmount(get("englishScore"));
+    setProfile((p) => ({
+      ...p,
+      fullName: fullName || p.fullName,
+      email: get("email") ?? p.email,
+      phone: get("phone") ?? p.phone,
+      nationality: natCode || p.nationality,
+      passportExpiry: get("passportExpiry") && /^\d{4}-\d{2}-\d{2}$/.test(get("passportExpiry")!) ? get("passportExpiry")! : p.passportExpiry,
+      englishScore: score && score <= 9 ? score : p.englishScore,
+      englishWaiver: /waiver|moi/i.test(get("englishTest") ?? "") || p.englishWaiver,
+      employment: get("employer") || get("occupation") ? p.employment || "employed" : p.employment,
+      savingsUSD: p.savingsUSD === "" && balance && /\$|usd/i.test(get("bankBalance") ?? "") ? balance : p.savingsUSD,
+    }));
   }
 
   const selected = getCountry(country);
 
   return (
     <div className="space-y-6">
+      <SaveBar savedAt={savedAt} onNew={newApplication} />
       <Stepper steps={STEPS} current={step} onStep={setStep} />
 
       {step === 0 && (
@@ -188,7 +289,13 @@ export function CheckWizard() {
             </Field>
             <Field label="Number of previous visa refusals"><input className="input" type="number" min={0} value={profile.previousRefusals} onChange={(e) => set("previousRefusals", num(e.target.value))} /></Field>
             {["student", "work", "residence"].includes(visaType) && (
-              <Field label="English score (IELTS band equivalent)"><input className="input" type="number" step="0.5" min={0} max={9} value={profile.englishScore} onChange={(e) => set("englishScore", num(e.target.value))} /></Field>
+              <Field label="English score (IELTS band equivalent)" hint={profile.englishWaiver ? "Waived. Leave empty if you have no test." : undefined}><input className="input" type="number" step="0.5" min={0} max={9} value={profile.englishScore} onChange={(e) => set("englishScore", num(e.target.value))} /></Field>
+            )}
+            {ENGLISH_TYPES.includes(visaType) && (
+              <label className="flex items-start gap-3 rounded-xl border border-indigo-200 bg-indigo-50/60 px-3 py-2.5 text-sm sm:col-span-2">
+                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-indigo-600" checked={profile.englishWaiver} onChange={(e) => set("englishWaiver", e.target.checked)} />
+                <span><b>IELTS / PTE waived</b><span className="block text-xs text-slate-600">e.g. Medium of Instruction (MOI) letter, previous degree taught in English, university/employer waiver, or nationality of a majority English-speaking country. The checklist will ask for waiver evidence instead of a test result.</span></span>
+              </label>
             )}
           </div>
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
@@ -302,6 +409,13 @@ export function CheckWizard() {
               </ul>
             </div>
 
+            <DetailsPanel
+              details={details}
+              setDetails={setDetails}
+              onFillProfile={fillProfileFromDetails}
+              formExtra={{ destination: selected?.name ?? "", visaType: VISA_TYPES.find((v) => v.id === visaType)?.name ?? "" }}
+            />
+
             <ExtraDocs extras={extras} setExtras={setExtras} requirements={requirements} onMatch={(file, req) => setAttached((a) => [...a, { file, reqId: req.id, auto: true }])} />
 
             <CvSection
@@ -328,7 +442,7 @@ export function CheckWizard() {
                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-amber-400 to-rose-500 text-xl text-white shadow-lg [transform:perspective(300px)_rotateY(-14deg)]">🔍</span>
                 <div className="flex-1">
                   <h2 className="text-lg font-bold">Support document review</h2>
-                  <p className="text-sm text-slate-500">Each uploaded document is checked for errors: wrong name, passport number or country, blanks, risky sentences, spelling and letter order. You get the exact words to replace.</p>
+                  <p className="text-sm text-slate-500">Every uploaded document is reviewed automatically for errors: wrong name, passport number or country, blanks, risky sentences, spelling and letter order. You get the exact words to replace.</p>
                 </div>
               </div>
               <div className="mt-4">
@@ -337,7 +451,8 @@ export function CheckWizard() {
                     ...attached.map((a, i) => ({ id: `a${i}-${a.file.name}`, name: requirements.find((r) => r.id === a.reqId)?.name ?? a.file.name, file: a.file })),
                     ...extras.filter((e) => e.file).map((e) => ({ id: e.id, name: e.name, file: e.file })),
                   ]}
-                  context={{ fullName: profile.fullName, destination: selected?.name, visaType }}
+                  context={{ fullName: profile.fullName, destination: selected?.name, visaType, passportNo: details.find((x) => x.key === "passportNo")?.value }}
+                  autoRun
                 />
               </div>
             </div>

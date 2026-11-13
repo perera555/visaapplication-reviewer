@@ -7,13 +7,16 @@ import { COUNTRIES, flag, getCountry } from "@/lib/countries";
 import { VISA_TYPES, visaTypeName } from "@/lib/requirements";
 import type { Application, ApplicationStatus, CustomRequirement, SupportDoc } from "@/lib/types";
 import { Field } from "@/components/ui";
+import { Registrations } from "./Registrations";
 
 type Me = { id: string; name: string; email: string; phone: string };
-type Config = { ai: boolean; email: boolean; sms: boolean; storage: "redis" | "file" | "ephemeral" };
+type Config = { ai: boolean; email: boolean; sms: boolean; storage: "postgres" | "redis" | "file" | "ephemeral" };
 const TABS = [
+  ["regs", "🪪 Registrations"],
   ["apps", "📥 Applications"],
   ["reqs", "📋 Required documents"],
   ["support", "📚 Support documents"],
+  ["admins", "👥 Admin users"],
   ["account", "⚙️ Account & settings"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
@@ -38,7 +41,7 @@ export function Dashboard() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [cfg, setCfg] = useState<Config | null>(null);
-  const [tab, setTab] = useState<Tab>("apps");
+  const [tab, setTab] = useState<Tab>("regs");
 
   useEffect(() => {
     fetch("/api/admin/me").then(async (r) => {
@@ -69,11 +72,11 @@ export function Dashboard() {
         </div>
       </div>
 
-      {cfg && cfg.storage !== "redis" && (
+      {cfg && cfg.storage !== "redis" && cfg.storage !== "postgres" && (
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           {cfg.storage === "ephemeral"
-            ? "⚠️ Storage is temporary on this server. Data is lost when the server restarts. Connect Upstash Redis (Vercel → Storage → Upstash for Redis) to keep applications and admin settings permanently."
-            : "ℹ️ Local development storage (.data/db.json). Connect Upstash Redis in production."}
+            ? "⚠️ Storage is temporary on this server. Data is lost when the server restarts. Connect PostgreSQL (Vercel → Storage → Neon Postgres) to keep registrations, documents, applications and admins permanently."
+            : "ℹ️ Local development storage (.data/db.json). Set DATABASE_URL to use PostgreSQL."}
         </div>
       )}
 
@@ -84,10 +87,12 @@ export function Dashboard() {
       </div>
 
       <div className="mt-6">
+        {tab === "regs" && <Registrations />}
         {tab === "apps" && <Applications />}
         {tab === "reqs" && <Requirements />}
         {tab === "support" && <SupportDocs />}
-        {tab === "account" && <Account me={me} setMe={setMe} cfg={cfg} />}
+        {tab === "admins" && <AdminUsers me={me} />}
+        {tab === "account" &&<Account me={me} setMe={setMe} cfg={cfg} />}
       </div>
     </div>
   );
@@ -380,6 +385,119 @@ function SupportDocs() {
   );
 }
 
+function AdminUsers({ me }: { me: Me }) {
+  const [list, setList] = useState<(Me & { createdAt: string })[]>([]);
+  const [created, setCreated] = useState<(Me & { password: string }) | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [f, setF] = useState({ name: "", email: "", phone: "", password: "", confirm: "" });
+  const [msg, setMsg] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => api<(Me & { createdAt: string })[]>("/api/admin/users").then(setList).catch((e) => setError(e.message)), []);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function create(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg("");
+    setError("");
+    if (f.password !== f.confirm) return setError("Passwords do not match.");
+    setBusy(true);
+    try {
+      const a = await api<Me>("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
+      setCreated({ ...a, password: f.password });
+      setMsg("");
+      setF({ name: "", email: "", phone: "", password: "", confirm: "" });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function resetPw(a: Me) {
+    const pw = prompt(`New password for ${a.name} (min 8 characters). Tell them to change it under Account & settings.`);
+    if (!pw) return;
+    try {
+      await api(`/api/admin/users/${a.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw }) });
+      setMsg(`Password updated for ${a.name}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed");
+    }
+  }
+  async function remove(a: Me) {
+    if (!confirm(`Remove admin ${a.name} (${a.email})?`)) return;
+    try {
+      await api(`/api/admin/users?id=${a.id}`, { method: "DELETE" });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed");
+    }
+  }
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((x) => ({ ...x, [k]: e.target.value }));
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-5">
+      <form onSubmit={create} className="card space-y-4 lg:col-span-2">
+        <h2 className="font-bold">➕ Create admin user</h2>
+        <p className="text-sm text-slate-500">New admins can sign in, manage registrations and applications, and reset their password by email or SMS code.</p>
+        <Field label="Full name"><input className="input" required value={f.name} onChange={set("name")} /></Field>
+        <Field label="Email (login)"><input className="input" type="email" required value={f.email} onChange={set("email")} /></Field>
+        <Field label="Mobile (for SMS reset codes)" hint="International format, e.g. +94771234567"><input className="input" type="tel" value={f.phone} onChange={set("phone")} /></Field>
+        <Field label="Password (min 8 characters)"><input className="input" type="password" required minLength={8} autoComplete="new-password" value={f.password} onChange={set("password")} /></Field>
+        <Field label="Confirm password"><input className="input" type="password" required minLength={8} autoComplete="new-password" value={f.confirm} onChange={set("confirm")} /></Field>
+        {error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
+        <button className="btn-primary w-full" disabled={busy}>{busy ? "Creating…" : "Create admin"}</button>
+      </form>
+      <div className="space-y-6 lg:col-span-3">
+      {created && (
+        <div className="scene">
+          <div className="rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-600 p-5 text-white shadow-2xl [transform:rotateX(5deg)]">
+            <div className="flex items-start gap-3">
+              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/20 text-2xl font-black">{created.name.slice(0, 1).toUpperCase()}</span>
+              <div className="flex-1">
+                <div className="text-xs font-bold uppercase tracking-widest text-white/80">✅ New admin account created</div>
+                <div className="text-xl font-black">{created.name}</div>
+              </div>
+              <button className="text-white/80 hover:text-white" onClick={() => setCreated(null)} aria-label="Close">✕</button>
+            </div>
+            <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+              <div className="rounded-xl bg-white/10 p-2"><dt className="text-xs text-white/70">Login page</dt><dd className="font-mono">{typeof window !== "undefined" ? window.location.origin : ""}/admin/login</dd></div>
+              <div className="rounded-xl bg-white/10 p-2"><dt className="text-xs text-white/70">Email (username)</dt><dd className="font-mono">{created.email}</dd></div>
+              <div className="rounded-xl bg-white/10 p-2"><dt className="text-xs text-white/70">Mobile (SMS reset codes)</dt><dd className="font-mono">{created.phone || "not set"}</dd></div>
+              <div className="rounded-xl bg-white/10 p-2"><dt className="text-xs text-white/70">Password (shown only now)</dt><dd className="font-mono">{created.password}</dd></div>
+            </dl>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-indigo-700" onClick={() => { navigator.clipboard.writeText(`VisaReview admin account\nLogin: ${window.location.origin}/admin/login\nEmail: ${created.email}\nPassword: ${created.password}\nPlease change your password after first sign-in (Account & settings).`); setCopied(true); }}>{copied ? "✓ Copied" : "📋 Copy login details"}</button>
+              <a className="rounded-xl bg-white/15 px-3 py-2 text-sm font-semibold" href={`mailto:${created.email}?subject=${encodeURIComponent("Your VisaReview admin account")}&body=${encodeURIComponent(`Login: ${typeof window !== "undefined" ? window.location.origin : ""}/admin/login\nEmail: ${created.email}\nPlease change your password after first sign-in.`)}`}>📧 Email them</a>
+            </div>
+            <p className="mt-3 text-xs text-white/80">Share the password privately. They should change it under Account &amp; settings after signing in.</p>
+          </div>
+        </div>
+      )}
+      <div className="card">
+        <h2 className="font-bold">Admin users ({list.length})</h2>
+        <ul className="mt-3 divide-y divide-line">
+          {list.map((a) => (
+            <li key={a.id} className="flex items-center gap-3 py-3">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 font-bold text-white">{a.name.slice(0, 1).toUpperCase()}</span>
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold">{a.name} {a.id === me.id && <span className="chip bg-indigo-50 text-indigo-700">you</span>}</div>
+                <div className="truncate text-xs text-slate-500">{a.email} · {a.phone || "no phone"} · added {new Date(a.createdAt).toLocaleDateString()}</div>
+              </div>
+              {a.id !== me.id && <button className="text-sm text-indigo-600" onClick={() => resetPw(a)}>Reset password</button>}
+              {a.id !== me.id && <button className="text-sm text-rose-600" onClick={() => remove(a)}>Remove</button>}
+            </li>
+          ))}
+        </ul>
+        {msg && <p className="mt-2 text-sm text-emerald-700">{msg}</p>}
+      </div>
+      </div>
+    </div>
+  );
+}
+
 function Account({ me, setMe, cfg }: { me: Me; setMe: (m: Me) => void; cfg: Config | null }) {
   const [f, setF] = useState({ name: me.name, email: me.email, phone: me.phone, currentPassword: "", newPassword: "" });
   const [msg, setMsg] = useState("");
@@ -415,7 +533,7 @@ function Account({ me, setMe, cfg }: { me: Me; setMe: (m: Me) => void; cfg: Conf
       </form>
       <div className="card space-y-3">
         <h2 className="font-bold">Integrations</h2>
-        <div className="flex items-center justify-between text-sm"><span>Permanent storage (Upstash Redis)</span>{ok(cfg?.storage === "redis")}</div>
+        <div className="flex items-center justify-between text-sm"><span>Database ({cfg?.storage === "postgres" ? "PostgreSQL" : cfg?.storage === "redis" ? "Redis" : "PostgreSQL"})</span>{ok(cfg?.storage === "postgres" || cfg?.storage === "redis")}</div>
         <div className="flex items-center justify-between text-sm"><span>Email codes (Resend)</span>{ok(cfg?.email)}</div>
         <div className="flex items-center justify-between text-sm"><span>SMS codes (Twilio)</span>{ok(cfg?.sms)}</div>
         <div className="flex items-center justify-between text-sm"><span>AI analysis (Claude)</span>{ok(cfg?.ai)}</div>

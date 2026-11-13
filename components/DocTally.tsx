@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { COUNTRIES, flag, getCountry } from "@/lib/countries";
-import { VISA_TYPES, getRequirements, type DocRequirement, type VisaTypeId } from "@/lib/requirements";
+import { ENGLISH_TYPES, VISA_TYPES, getRequirements, type DocRequirement, type VisaTypeId } from "@/lib/requirements";
 import { classifyDocument } from "@/lib/scoring";
 import type { CustomRequirement } from "@/lib/types";
 import { extractFileText } from "./SupportDocReview";
@@ -33,7 +33,8 @@ export function DocTally({ country: initialCountry, visaType: initialType, selec
     fetch(`/api/requirements?country=${country}&type=${visaType}`).then((r) => r.json()).then(setCustom).catch(() => setCustom([]));
   }, [country, visaType]);
 
-  const reqs: DocRequirement[] = useMemo(() => [...getRequirements(country, visaType), ...custom], [country, visaType, custom]);
+  const [waiver, setWaiver] = useState(false);
+  const reqs: DocRequirement[] = useMemo(() => [...getRequirements(country, visaType, { englishWaiver: waiver }), ...custom], [country, visaType, custom, waiver]);
   const provided = (r: DocRequirement) => Boolean(have[r.id] || files[r.id]?.length);
   const required = reqs.filter((r) => r.mandatory);
   const recommended = reqs.filter((r) => !r.mandatory);
@@ -108,6 +109,13 @@ export function DocTally({ country: initialCountry, visaType: initialType, selec
             </select>
           </label>
         </div>
+      )}
+
+      {ENGLISH_TYPES.includes(visaType) && (
+        <label className="flex items-start gap-3 rounded-xl border border-indigo-200 bg-indigo-50/60 px-3 py-2 text-sm">
+          <input type="checkbox" className="mt-0.5 h-4 w-4 accent-indigo-600" checked={waiver} onChange={(e) => setWaiver(e.target.checked)} />
+          <span><b>IELTS / PTE waived</b>: I have an MOI letter, a degree taught in English, or a university/employer waiver.</span>
+        </label>
       )}
 
       {/* tally summary */}

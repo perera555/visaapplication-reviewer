@@ -1,10 +1,12 @@
 export const NAV = [
-  { href: "/check", label: "Document Review" },
-  { href: "/review", label: "Support Doc Review" },
+  { href: "/register", label: "Register" },
+  { href: "/check", label: "Doc Review" },
+  { href: "/review", label: "Support Docs" },
   { href: "/countries", label: "Countries" },
-  { href: "/refusal", label: "Refusal Review" },
-  { href: "/letter", label: "Letter Writer" },
-  { href: "/form", label: "Application Form" },
+  { href: "/refusal", label: "Refusal" },
+  { href: "/letter", label: "Letters" },
+  { href: "/form", label: "Form" },
+  { href: "/saved", label: "My Saved" },
   { href: "/guide", label: "Guide" },
 ];
 

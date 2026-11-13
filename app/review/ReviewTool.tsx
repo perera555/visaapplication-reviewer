@@ -62,7 +62,7 @@ export function ReviewTool() {
       <div className="card">
         <h2 className="font-bold">3. Review results</h2>
         <div className="mt-3">
-          <SupportDocReview items={items} context={{ fullName, passportNo, destination, visaType }} />
+          <SupportDocReview items={items} context={{ fullName, passportNo, destination, visaType }} autoRun />
         </div>
         {items.length > 0 && <button className="mt-3 text-sm text-rose-600" onClick={() => setItems([])}>Clear all</button>}
       </div>

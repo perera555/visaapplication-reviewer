@@ -33,7 +33,18 @@ export function verifyPassword(pw: string, stored: string) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export const normEmail = (e: string) => e.trim().toLowerCase();
+/**
+ * First-admin setup rules. In production the setup form ALWAYS needs ADMIN_SETUP_KEY (12+ chars);
+ * without it setup is switched off and the first admin must come from ADMIN_EMAIL / ADMIN_PASSWORD.
+ * After that, only signed-in admins can add admins (Admin users tab).
+ */
+export function setupPolicy() {
+  const key = process.env.ADMIN_SETUP_KEY ?? "";
+  const prod = process.env.NODE_ENV === "production";
+  return { allowed: !prod || key.length >= 12, keyRequired: key.length > 0 || prod, key };
+}
+
+export const normEmail =(e: string) => e.trim().toLowerCase();
 export const normPhone = (p: string) => p.replace(/[^\d+]/g, "");
 
 export async function getAdmins(): Promise<Admin[]> {

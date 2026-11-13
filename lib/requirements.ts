@@ -326,13 +326,33 @@ export function getCountryProfile(code: string): CountryProfile {
   );
 }
 
+/** Replaces the IELTS/PTE requirement when the applicant has an English test waiver. */
+export const ENGLISH_WAIVER_DOC: DocRequirement = {
+  id: "english-waiver",
+  name: "English test waiver evidence (instead of IELTS/PTE)",
+  description:
+    "Medium of Instruction (MOI) letter from your university, a degree taught in English, a waiver letter from the university/employer, or proof of nationality from a majority English-speaking country. Confirm the embassy accepts the waiver for the visa itself, not just for admission.",
+  mandatory: true,
+  weight: 3,
+  category: "purpose",
+  keywords: ["moi", "medium of instruction", "waiver", "english proficiency", "english language waiver", "taught in english"],
+  source: "standard",
+};
+
 /** Full standard checklist for a destination + visa type (admin-added items are merged on top in the UI). */
-export function getRequirements(countryCode: string, visaType: VisaTypeId): DocRequirement[] {
+export function getRequirements(countryCode: string, visaType: VisaTypeId, opts: { englishWaiver?: boolean } = {}): DocRequirement[] {
   const profile = getCountryProfile(countryCode);
   const list = [...BASE, ...(BY_TYPE[visaType] ?? []), ...(profile.extraDocs?.all ?? []), ...(profile.extraDocs?.[visaType] ?? [])];
   const seen = new Set<string>();
-  return list.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+  const unique = list.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+  if (!opts.englishWaiver) return unique;
+  const i = unique.findIndex((r) => r.id === "english-test");
+  if (i >= 0) unique.splice(i, 1, ENGLISH_WAIVER_DOC);
+  return unique;
 }
+
+/** Visa types where an English test (or waiver) usually matters. */
+export const ENGLISH_TYPES: VisaTypeId[] = ["student", "work", "residence", "family"];
 
 // ---------- how you apply: online, online + in person, or offline at the embassy ----------
 export type ApplyMode = "online" | "hybrid" | "offline" | "check";

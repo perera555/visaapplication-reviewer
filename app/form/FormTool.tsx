@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PDFCheckBox, PDFDocument, PDFDropdown, PDFOptionList, PDFRadioGroup, PDFTextField } from "pdf-lib";
 import { FORM_SECTIONS, matchFieldValue } from "@/lib/formSchema";
 import { downloadBytes, textToPdf } from "@/lib/pdf";
 import { Field, Stepper } from "@/components/ui";
+import { extractFileText } from "@/components/SupportDocReview";
+import { detailsToFormValues, extractDetails } from "@/lib/extractDetails";
+import { activeId, debounce, getItem, putItem } from "@/lib/savedStore";
+import { SaveBar } from "@/components/SaveBar";
 
 const KEY = "visa-form-v1";
 
@@ -15,12 +19,46 @@ export function FormTool() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [section, setSection] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [formId, setFormId] = useState("");
+  const [savedAt, setSavedAt] = useState("");
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    try {
-      setValues(JSON.parse(localStorage.getItem(KEY) ?? "{}"));
-    } catch {}
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const fresh = Boolean(params.get("new"));
+      const active = activeId("form");
+      const id = params.get("id") || (fresh ? "" : active) || crypto.randomUUID();
+      setFormId(id);
+      activeId("form", id);
+      let local: Record<string, string> = {};
+      try {
+        local = JSON.parse(localStorage.getItem(KEY) ?? "{}");
+      } catch {}
+      const item = fresh ? undefined : await getItem<Record<string, string>>(id);
+      // the active form is mirrored in localStorage (other tools fill it there), so merge it in
+      const v = fresh ? {} : id === active || !item ? { ...(item?.data ?? {}), ...local } : item.data;
+      setValues(v);
+      try {
+        localStorage.setItem(KEY, JSON.stringify(v));
+      } catch {}
+      if (item) setSavedAt(item.updatedAt);
+      setReady(true);
+    })();
   }, []);
+
+  const autosave = useMemo(
+    () =>
+      debounce(async (id: string, v: Record<string, string>) => {
+        const name = [v.givenNames, v.surname].filter(Boolean).join(" ");
+        await putItem({ id, kind: "form", title: `Visa application form${name ? ` – ${name}` : ""}`, subtitle: [v.destination, v.visaType].filter(Boolean).join(" · "), data: v });
+        setSavedAt(new Date().toISOString());
+      }, 800),
+    [],
+  );
+  useEffect(() => {
+    if (ready && formId) autosave(formId, values);
+  }, [values, formId, ready, autosave]);
 
   function update(k: string, v: string) {
     setValues((x) => {
@@ -31,6 +69,38 @@ export function FormTool() {
       } catch {}
       return next;
     });
+  }
+
+  const [grabMsg, setGrabMsg] = useState("");
+  const [grabbing, setGrabbing] = useState(false);
+
+  /** Read uploaded documents (passport, bank statement, letters…) and fill empty form fields. */
+  const [slotStatus, setSlotStatus] = useState<Record<string, string>>({});
+  async function grabFromDocs(list: FileList | null, slot = "Documents") {
+    if (!list?.length) return;
+    setGrabbing(true);
+    setSlotStatus((s) => ({ ...s, [slot]: "Reading…" }));
+    let filled = 0;
+    const found: string[] = [];
+    const next = { ...values };
+    for (const f of [...list]) {
+      const text = await extractFileText(f);
+      const v = detailsToFormValues(extractDetails(text, f.name));
+      for (const [k, val] of Object.entries(v)) {
+        if (val && !next[k]?.trim()) {
+          next[k] = val;
+          filled++;
+          found.push(k);
+        }
+      }
+    }
+    setValues(next);
+    try {
+      localStorage.setItem(KEY, JSON.stringify(next));
+    } catch {}
+    setGrabbing(false);
+    setSlotStatus((s) => ({ ...s, [slot]: filled ? `✅ ${filled} field(s) filled` : "⚠ no details found" }));
+    setGrabMsg(filled ? `✓ ${filled} field(s) filled from your documents: ${found.join(", ")}. Check each one and edit anything that is wrong.` : "No new details found (scanned images cannot be read). Fill the fields manually.");
   }
 
   const completed = FORM_SECTIONS.map((s) => s.fields.filter((f) => values[f.key]?.trim()).length / s.fields.length);
@@ -44,11 +114,45 @@ export function FormTool() {
 
   return (
     <div className="space-y-6">
+      <SaveBar savedAt={savedAt} newLabel="+ New form" onNew={() => (window.location.href = "/form?new=1")} />
       <div className="inline-flex rounded-2xl border border-line bg-white p-1 shadow-sm">
         {([["guided", "📝 Guided form"], ["pdf", "📄 Fill an official PDF form"]] as const).map(([id, l]) => (
           <button key={id} onClick={() => setTab(id)} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${tab === id ? "bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg" : "text-slate-600 hover:bg-slate-50"}`}>{l}</button>
         ))}
       </div>
+
+      <>
+          <div className="card border-indigo-200 bg-indigo-50/40">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🧾</span>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-bold">Fill the form from your documents</h2>
+                <p className="text-sm text-slate-600">Upload each document separately (PDF). Details are read and put into the empty fields. You can still edit everything by hand.</p>
+              </div>
+              {grabbing && <span className="animate-pulse text-sm text-indigo-700">Reading…</span>}
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ["🛂", "Passport", "Name, passport no., dates, nationality"],
+                ["🪪", "National ID", "ID number, address, date of birth"],
+                ["🏦", "Bank statement", "Account holder, balance"],
+                ["💼", "Employment letter", "Employer, job title, salary"],
+                ["🎓", "Offer / admission letter", "University, course, start date"],
+                ["🗣️", "IELTS / PTE / waiver", "Test and score, or MOI waiver"],
+                ["📄", "CV", "Contact details, occupation"],
+                ["➕", "Other document", "Any other PDF"],
+              ].map(([icon, slot, hint]) => (
+                <label key={slot} className={`cursor-pointer rounded-2xl border bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-md ${slotStatus[slot]?.startsWith("✅") ? "border-emerald-300" : "border-line"}`}>
+                  <div className="flex items-center gap-2 font-semibold">{icon} {slot}</div>
+                  <div className="text-xs text-slate-500">{hint}</div>
+                  <div className="mt-2 text-xs font-semibold text-indigo-700">{slotStatus[slot] ?? "📎 Upload"}</div>
+                  <input type="file" accept=".pdf,.txt" className="hidden" onChange={(e) => { grabFromDocs(e.target.files, slot); e.target.value = ""; }} />
+                </label>
+              ))}
+            </div>
+            {grabMsg && <p className="mt-3 text-sm text-emerald-700">{grabMsg}</p>}
+          </div>
+      </>
 
       {tab === "guided" ? (
         <>
@@ -174,7 +278,7 @@ function PdfFiller({ values }: { values: Record<string, string> }) {
       <div className="card border-2 border-dashed border-indigo-200 bg-indigo-50/40 text-center">
         <div className="text-4xl">📄</div>
         <h2 className="mt-2 text-lg font-bold">Upload the official visa application PDF</h2>
-        <p className="text-sm text-slate-600">Fillable PDF forms only. Answers from the guided form are filled in automatically where the field names match.</p>
+        <p className="text-sm text-slate-600">Fillable PDF forms only. Details from your documents (upload them above) and guided-form answers are filled in automatically where the field names match.</p>
         <label className="btn-primary mt-4 cursor-pointer">Choose PDF<input type="file" accept="application/pdf" className="hidden" onChange={(e) => { load(e.target.files?.[0]); e.target.value = ""; }} /></label>
         {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
       </div>

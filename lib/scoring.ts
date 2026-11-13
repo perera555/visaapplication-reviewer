@@ -21,6 +21,7 @@ export type Profile = {
   dependentsAtHome: boolean;
   sponsor: boolean;
   englishScore: number | ""; // IELTS-equivalent band
+  englishWaiver: boolean; // IELTS/PTE waived (MOI letter, English-taught degree, university waiver)
   hasOfferOrInvitation: boolean;
 };
 
@@ -28,7 +29,7 @@ export const EMPTY_PROFILE: Profile = {
   fullName: "", email: "", phone: "", nationality: "", age: "", passportExpiry: "", travelDate: "",
   stayDays: "", employment: "", monthlyIncomeUSD: "", savingsUSD: "", travelHistory: "",
   previousRefusals: "", refusedThisCountry: false, overstayOrViolation: false, criminalRecord: false,
-  propertyOrFamilyTies: false, dependentsAtHome: false, sponsor: false, englishScore: "", hasOfferOrInvitation: false,
+  propertyOrFamilyTies: false, dependentsAtHome: false, sponsor: false, englishScore: "", englishWaiver: false, hasOfferOrInvitation: false,
 };
 
 export type DocStatus = { reqId: string; provided: boolean; fileName?: string; note?: string };
@@ -128,7 +129,8 @@ export function assess(
 
   if (visaType === "student" || visaType === "work" || visaType === "residence") {
     const e = n(p.englishScore);
-    if (p.englishScore === "") add("No language score", -4, "Enter your IELTS-equivalent score.");
+    if (p.englishWaiver && p.englishScore === "") add("IELTS/PTE waived", 4, "English test waived. Include the MOI or waiver letter, and confirm the embassy accepts it for the visa.");
+    else if (p.englishScore === "") add("No language score", -4, "Enter your IELTS-equivalent score, or tick “IELTS/PTE waived” if you have a waiver.");
     else if (e >= 7) add("Strong English", 8, `Band ${e} comfortably meets most requirements.`);
     else if (e >= 6) add("Acceptable English", 4, `Band ${e} meets many course/visa minimums.`);
     else add("Low English score", -10, `Band ${e} may be below course or visa requirements.`);

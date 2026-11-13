@@ -63,12 +63,24 @@ const CUSTOMER: { section: string; icon: string; steps: Step[] }[] = [
 
 const ADMIN: { section: string; icon: string; steps: Step[] }[] = [
   {
+    section: "Customer registrations",
+    icon: "🪪",
+    steps: [
+      { title: "Customers register", body: "Customers open “Register”, upload documents one by one (details fill in automatically), add a photo and get a registration number like VR-2026-000123.", link: ["/register", "Registration page"] },
+      { title: "Is this person registered?", body: "Dashboard → “🪪 Registrations”. Type a name, registration no., passport, national ID, email or phone. It says ✅ Registered or ❌ Not registered straight away." },
+      { title: "Open the file", body: "Click a customer to see their photo, details, status and documents by category. Download, view, add or delete documents, and edit details." },
+      { title: "Review documents", body: "Click “Review all documents” to check every PDF for errors (wrong name or passport number, blanks, wording)." },
+      { title: "Update status & notes", body: "Set the status (Registered → In process → Visa submitted → Approved / Refused) and add internal notes." },
+    ],
+  },
+  {
     section: "First-time setup",
     icon: "🛠️",
     steps: [
-      { title: "Open Admin login", body: "Scroll to the bottom of the home page and click “🔐 Admin login”.", link: ["/admin/login", "Admin login"] },
-      { title: "Create the admin account", body: "The first time, you will see “Create the admin account”. Enter your name, email, mobile number (international format, e.g. +94771234567) and a password of 8+ characters. Alternatively set ADMIN_EMAIL / ADMIN_PASSWORD on the server." },
-      { title: "Connect permanent storage", body: "On Vercel: Project → Storage → create “Upstash for Redis” and connect it. Without it, data on Vercel is temporary." },
+      { title: "Owner creates the first admin", body: "The system owner opens /admin/setup once and enters the owner setup key (ADMIN_SETUP_KEY on the server), name, email, mobile and password. Setup closes automatically after the first admin exists, and visitors can never create admins." },
+      { title: "Admins add more admins", body: "Signed-in admins open “👥 Admin users” in the dashboard to add as many admins as needed. A details card shows the new login, which you can copy or email. Admins can also reset another admin's password there." },
+      { title: "Sign in", body: "Everyone uses “🔐 Admin login” at the bottom of the home page. It only shows the sign-in form.", link: ["/admin/login", "Admin login"] },
+      { title: "Connect the PostgreSQL database", body: "On Vercel: Project → Storage → create “Neon Postgres” and connect it (sets DATABASE_URL). Registrations, documents, applications and admins are then stored permanently." },
       { title: "Connect email & SMS for password reset", body: "Add RESEND_API_KEY + EMAIL_FROM (email) and TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_FROM (SMS) as environment variables, then redeploy. Check the status under Account & settings." },
       { title: "Optional: AI analysis", body: "Add ANTHROPIC_API_KEY to turn on AI refusal analysis and “Improve with AI” for letters." },
     ],

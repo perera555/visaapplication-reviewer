@@ -30,12 +30,16 @@ npm run dev
 
 Local data is stored in `.data/db.json`. Open **Admin login** (bottom of the home page) and create the first admin account. In dev, without email/SMS keys, the reset code is shown on screen and in the terminal.
 
+## Customer registration (company side)
+
+`/register`: customers upload documents one by one (details are read automatically), add a photo and get a registration number (`VR-YYYY-000001`). Admins search registrations by name, number, passport, ID, email or phone to see straight away whether someone is registered, then open their photo, details and categorised documents.
+
 ## Deploy to Vercel
 
 1. Import this GitHub repo in Vercel (framework: Next.js).
-2. **Storage → Create → Upstash for Redis** and connect it to the project. This keeps applications, admins and documents permanently. Without it, data on Vercel is temporary.
-3. **Settings → Environment Variables**: add `SESSION_SECRET` and, optionally, the email, SMS and AI keys from `.env.example`.
-4. Redeploy, then open `/admin/login` to create the admin account.
+2. **Storage → Create → Neon Postgres** and connect it to the project (sets `DATABASE_URL`). A `kv` table is created automatically. Without a database, data on Vercel is temporary.
+3. **Settings → Environment Variables**: set `SESSION_SECRET` and `ADMIN_SETUP_KEY`, plus optional email, SMS and AI keys from `.env.example`.
+4. Redeploy. The owner opens **`/admin/setup`** once with the setup key to create the first admin. After that, admins add more admins in **Dashboard → Admin users**. The footer **Admin login** link shows sign-in only.
 
 ## Notes
 
