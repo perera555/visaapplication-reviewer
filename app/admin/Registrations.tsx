@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { DOC_CATEGORIES, EMPTY_REG_DETAILS, REG_STATUS_LABEL, type Registration, type RegistrationDetails, type RegistrationIndex, type RegistrationStatus } from "@/lib/types";
+import { AuthBadge, AuthenticityPanel } from "@/components/Authenticity";
+import { DOC_CATEGORIES, EMPTY_REG_DETAILS, finalAuthStatus, REG_STATUS_LABEL, type Registration, type RegistrationDetails, type RegistrationIndex, type RegistrationStatus } from "@/lib/types";
 import { Field } from "@/components/ui";
 import { SupportDocReview, type ReviewItem } from "@/components/SupportDocReview";
 
@@ -122,6 +123,7 @@ function RegistrationDetail({ reg, onChange, onDeleted }: { reg: Registration; o
   const [cat, setCat] = useState(DOC_CATEGORIES[0]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState("");
+  const [asOriginal, setAsOriginal] = useState(false);
   const json = { "Content-Type": "application/json" };
 
   async function save(patch: object, note = "Saved.") {
@@ -140,6 +142,10 @@ function RegistrationDetail({ reg, onChange, onDeleted }: { reg: Registration; o
       const fd = new FormData();
       fd.append("file", f);
       fd.append("category", cat);
+      if (asOriginal) {
+        fd.append("manualOriginal", "1");
+        fd.append("note", "Added manually by admin: original document verified");
+      }
       try {
         await api(`/api/registrations/${reg.id}/documents`, { method: "POST", body: fd });
       } catch (e) {
@@ -148,6 +154,34 @@ function RegistrationDetail({ reg, onChange, onDeleted }: { reg: Registration; o
     }
     setBusy("");
     onChange();
+  }
+  const [openDoc, setOpenDoc] = useState<string | null>(null);
+  const [authBusy, setAuthBusy] = useState<string | null>(null);
+  async function recheck(docId: string) {
+    setAuthBusy(docId);
+    try {
+      await api(`/api/registrations/${reg.id}/documents/${docId}`, { method: "POST" });
+      onChange();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Check failed");
+    } finally {
+      setAuthBusy(null);
+    }
+  }
+  async function setManual(docId: string, status: "original" | "fake" | "needs-check" | null, note: string) {
+    setAuthBusy(docId);
+    try {
+      await api(`/api/registrations/${reg.id}/documents/${docId}`, { method: "PATCH", headers: json, body: JSON.stringify({ status, note }) });
+      setMsg(status ? `Document marked: ${status === "original" ? "Verified original" : status === "fake" ? "Fake / rejected" : "Needs checking"}.` : "Using the automatic result again.");
+      onChange();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setAuthBusy(null);
+    }
+  }
+  async function checkAll() {
+    for (const d of reg.documents.filter((x) => !x.auth)) await recheck(d.id);
   }
   async function delDoc(id: string) {
     if (!confirm("Delete this document?")) return;
@@ -191,17 +225,44 @@ function RegistrationDetail({ reg, onChange, onDeleted }: { reg: Registration; o
 
       <div>
         <h3 className="label">Documents by category</h3>
+        {reg.documents.length > 0 && (() => {
+          const st = reg.documents.map((x) => finalAuthStatus(x).key);
+          const c = (k: string) => st.filter((s) => s === k).length;
+          return (
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className="chip bg-emerald-100 text-emerald-800">✅ Original {c("original")}</span>
+              <span className="chip bg-amber-100 text-amber-900">🔍 Check {c("check")}</span>
+              <span className="chip bg-rose-100 text-rose-800">❌ Fake / suspicious {c("fake")}</span>
+              {c("unchecked") > 0 && <button className="chip cursor-pointer bg-slate-100 text-slate-700" onClick={checkAll}>• Not checked {c("unchecked")}: check now</button>}
+              <span className="text-slate-500">Click a badge to see reasons or change the decision.</span>
+            </div>
+          );
+        })()}
         {byCat.length === 0 && <p className="text-sm text-slate-500">No documents uploaded yet.</p>}
         <div className="space-y-2">
           {byCat.map(([c, list]) => (
             <div key={c} className="rounded-xl border border-line p-2">
               <div className="text-xs font-bold uppercase tracking-wide text-slate-500">{c}</div>
               {list.map((doc) => (
-                <div key={doc.id} className="flex items-center gap-2 py-1 text-sm">
-                  <a className="flex-1 truncate text-indigo-700 hover:underline" href={`/api/registrations/${reg.id}/documents/${doc.id}`} target="_blank" rel="noreferrer">📄 {doc.name}</a>
-                  <span className="text-xs text-slate-400">{Math.round(doc.size / 1024)} KB · {doc.by}</span>
-                  <a className="text-xs text-slate-600 hover:underline" href={`/api/registrations/${reg.id}/documents/${doc.id}`} download={doc.name}>⬇</a>
-                  <button className="text-xs text-rose-600" onClick={() => delDoc(doc.id)}>Delete</button>
+                <div key={doc.id} className="py-1.5">
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <a className="min-w-0 flex-1 truncate text-indigo-700 hover:underline" href={`/api/registrations/${reg.id}/documents/${doc.id}`} target="_blank" rel="noreferrer">📄 {doc.name}</a>
+                    <button type="button" onClick={() => setOpenDoc(openDoc === doc.id ? null : doc.id)} title="Original / fake check"><AuthBadge auth={doc.auth} manual={doc.manual} /></button>
+                    <span className="text-xs text-slate-400">{Math.round(doc.size / 1024)} KB · {doc.by}</span>
+                    <a className="text-xs text-slate-600 hover:underline" href={`/api/registrations/${reg.id}/documents/${doc.id}`} download={doc.name}>⬇</a>
+                    <button className="text-xs text-rose-600" onClick={() => delDoc(doc.id)}>Delete</button>
+                  </div>
+                  {openDoc === doc.id && (
+                    <div className="mt-2">
+                      <AuthenticityPanel
+                        auth={doc.auth}
+                        manual={doc.manual}
+                        busy={authBusy === doc.id}
+                        onRecheck={() => recheck(doc.id)}
+                        onManual={(status, note) => setManual(doc.id, status, note)}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -212,6 +273,10 @@ function RegistrationDetail({ reg, onChange, onDeleted }: { reg: Registration; o
           <label className="btn-ghost cursor-pointer">+ Add document<input type="file" multiple className="hidden" onChange={(e) => { upload(e.target.files); e.target.value = ""; }} /></label>
           {busy && <span className="text-sm text-indigo-700">{busy}</span>}
         </div>
+        <label className="mt-2 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-sm">
+          <input type="checkbox" className="mt-0.5 h-4 w-4 accent-emerald-600" checked={asOriginal} onChange={(e) => setAsOriginal(e.target.checked)} />
+          <span><b>Add as verified original</b>: I have seen the original document. It is saved as “✅ Verified original” even if the automatic check flags it.</span>
+        </label>
       </div>
 
       <AdminDocReview reg={reg} />

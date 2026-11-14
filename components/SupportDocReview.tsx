@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DocReview, ReviewContext } from "@/lib/docReview";
 import { downloadBytes, textToPdf } from "@/lib/pdf";
+import type { AuthSummary, ManualVerification } from "@/lib/types";
+import { AuthBadge, AuthenticityPanel } from "./Authenticity";
 
 export type ReviewItem = { id: string; name: string; file?: File; text?: string };
 
@@ -28,6 +30,22 @@ export async function extractFileText(file: File) {
 /** Reviews each supporting document for errors, suggests replacements and offers corrected / rearranged versions. */
 export function SupportDocReview({ items, context, autoRun = false }: { items: ReviewItem[]; context: ReviewContext; autoRun?: boolean }) {
   const [reviews, setReviews] = useState<Record<string, DocReview | "loading">>({});
+  const [auths, setAuths] = useState<Record<string, AuthSummary>>({});
+  const [manuals, setManuals] = useState<Record<string, ManualVerification>>({});
+
+  async function checkAuth(item: ReviewItem) {
+    if (!item.file) return;
+    const fd = new FormData();
+    fd.append("file", item.file);
+    fd.append("category", item.name);
+    try {
+      const r = await fetch("/api/authenticity", { method: "POST", body: fd });
+      if (r.ok) {
+        const a = (await r.json()) as AuthSummary;
+        setAuths((x) => ({ ...x, [item.id]: a }));
+      }
+    } catch {}
+  }
   const [aiAvailable, setAiAvailable] = useState(false);
   const [useAi, setUseAi] = useState(false);
 
@@ -37,6 +55,7 @@ export function SupportDocReview({ items, context, autoRun = false }: { items: R
 
   async function run(item: ReviewItem) {
     setReviews((r) => ({ ...r, [item.id]: "loading" }));
+    checkAuth(item);
     const text = item.text ?? (item.file ? await extractFileText(item.file) : "");
     try {
       const res = await fetch("/api/review-doc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, context: { ...context, docName: item.name }, useAi: useAi && aiAvailable }) });
@@ -86,13 +105,37 @@ export function SupportDocReview({ items, context, autoRun = false }: { items: R
         )}
       </div>
       {items.map((it) => (
-        <ReviewCard key={it.id} item={it} review={reviews[it.id]} onRun={() => run(it)} />
+        <ReviewCard
+          key={it.id}
+          item={it}
+          review={reviews[it.id]}
+          onRun={() => run(it)}
+          auth={auths[it.id]}
+          manual={manuals[it.id]}
+          onManual={(status, note) =>
+            setManuals((m) => {
+              const n = { ...m };
+              if (status) n[it.id] = { status, note, by: "you", at: new Date().toISOString() };
+              else delete n[it.id];
+              return n;
+            })
+          }
+          onRecheck={() => checkAuth(it)}
+        />
       ))}
     </div>
   );
 }
 
-function ReviewCard({ item, review, onRun }: { item: ReviewItem; review?: DocReview | "loading"; onRun: () => void }) {
+function ReviewCard({ item, review, onRun, auth, manual, onManual, onRecheck }: {
+  item: ReviewItem;
+  review?: DocReview | "loading";
+  onRun: () => void;
+  auth?: AuthSummary;
+  manual?: ManualVerification;
+  onManual: (status: ManualVerification["status"] | null, note: string) => void;
+  onRecheck: () => void;
+}) {
   const router = useRouter();
   const [view, setView] = useState<"issues" | "corrected" | "rearranged">("issues");
   const r = review && review !== "loading" ? review : null;
@@ -123,8 +166,15 @@ function ReviewCard({ item, review, onRun }: { item: ReviewItem; review?: DocRev
           {item.file && item.file.name !== item.name && <div className="truncate text-xs text-slate-500">{item.file.name}</div>}
           {r && <div className="text-sm font-bold">{r.verdictLabel}{r.aiUsed && " · ✨ AI"}</div>}
         </div>
+        {(auth || manual) && <AuthBadge auth={auth} manual={manual} />}
         <button className="btn-ghost px-3 py-1.5 text-xs" onClick={onRun} disabled={review === "loading"}>{review === "loading" ? "Reviewing…" : r ? "Re-check" : "Review"}</button>
       </div>
+      {(auth || manual) && (
+        <details className="mt-2" open={Boolean(auth && auth.verdict !== "likely-original" && !manual)}>
+          <summary className="cursor-pointer text-xs font-semibold text-slate-700">Original or fake? See the check and decide manually</summary>
+          <div className="mt-2"><AuthenticityPanel auth={auth} manual={manual} onManual={onManual} onRecheck={onRecheck} /></div>
+        </details>
+      )}
 
       {r && (
         <div className="mt-3">

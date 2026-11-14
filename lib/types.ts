@@ -59,7 +59,25 @@ export const EMPTY_REG_DETAILS: RegistrationDetails = {
   visaType: "", notes: "",
 };
 
-export type RegDocument = { id: string; category: string; name: string; type: string; size: number; uploadedAt: string; by: "customer" | "admin" };
+export type AuthVerdict = "likely-original" | "needs-check" | "suspicious";
+export type AuthSummary = { score: number; verdict: AuthVerdict; verdictLabel: string; checkedAt: string; signals?: { level: "good" | "info" | "warn" | "bad"; label: string; detail: string }[] };
+/** A person's decision. It ALWAYS overrides the automatic check (e.g. an original wrongly flagged as fake). */
+export type ManualVerification = { status: "original" | "fake" | "needs-check"; note: string; by: string; at: string };
+
+export const MANUAL_LABEL: Record<ManualVerification["status"], string> = { original: "Verified original", fake: "Marked fake / rejected", "needs-check": "Needs checking" };
+
+export type RegDocument = {
+  id: string; category: string; name: string; type: string; size: number; uploadedAt: string; by: "customer" | "admin";
+  auth?: AuthSummary;
+  manual?: ManualVerification;
+};
+
+/** Final status shown everywhere: manual decision first, then the automatic result. */
+export function finalAuthStatus(d: { auth?: AuthSummary; manual?: ManualVerification }) {
+  if (d.manual) return { key: d.manual.status === "original" ? "original" : d.manual.status === "fake" ? "fake" : "check", label: MANUAL_LABEL[d.manual.status], manual: true } as const;
+  if (!d.auth) return { key: "unchecked", label: "Not checked", manual: false } as const;
+  return { key: d.auth.verdict === "likely-original" ? "original" : d.auth.verdict === "suspicious" ? "fake" : "check", label: d.auth.verdictLabel, manual: false } as const;
+}
 
 export type Registration = {
   id: string;

@@ -1,6 +1,7 @@
 import { getSessionAdmin, unauthorized } from "@/lib/server/auth";
 import { checkUploadToken, getRegistration, putRegFile, saveRegistration } from "@/lib/server/registrations";
 import { kvDel, newId } from "@/lib/server/store";
+import { checkAuthenticity } from "@/lib/server/authenticity";
 import { DOC_CATEGORIES, MAX_REG_FILE, type RegDocument } from "@/lib/types";
 
 async function authorise(req: Request, id: string) {
@@ -10,6 +11,8 @@ async function authorise(req: Request, id: string) {
 }
 
 // Upload ONE document at a time to a registration (customer with upload token, or admin).
+export const maxDuration = 60;
+
 export async function POST(req: Request, ctx: RouteContext<"/api/registrations/[id]/documents">) {
   const { id } = await ctx.params;
   const by = await authorise(req, id);
@@ -31,6 +34,16 @@ export async function POST(req: Request, ctx: RouteContext<"/api/registrations/[
     by,
   };
   await putRegFile(id, doc.id, file);
+  // automatic authenticity check on every upload (a person can override it later)
+  try {
+    const r = await checkAuthenticity(new Uint8Array(await file.arrayBuffer()), file.name, doc.type, doc.category);
+    doc.auth = { score: r.score, verdict: r.verdict, verdictLabel: r.verdictLabel, checkedAt: r.checkedAt, signals: r.signals.map(({ level, label, detail }) => ({ level, label, detail })) };
+  } catch {}
+  // admin adds a document they have personally verified: store it as a manual "original" decision
+  if (by === "admin" && form.get("manualOriginal") === "1") {
+    const admin = await getSessionAdmin();
+    doc.manual = { status: "original", note: String(form.get("note") ?? "Added manually by admin as verified original").slice(0, 1000), by: admin?.name || admin?.email || "admin", at: new Date().toISOString() };
+  }
   reg.documents.push(doc);
   if (reg.status === "documents-pending" && reg.documents.length >= 3) reg.status = "registered";
   await saveRegistration(reg);
