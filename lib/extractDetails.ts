@@ -139,6 +139,8 @@ export function detailsToFormValues(details: Detail[]): Record<string, string> {
     passportIssue: "passportIssue", passportExpiry: "passportExpiry", placeOfBirth: "placeOfBirth",
     nationalId: "nationalId", email: "email", phone: "phone", address: "address", employer: "employer",
     occupation: "occupation", income: "income", maritalStatus: "maritalStatus",
+    // country-specific form questions
+    institution: "x_institution", course: "x_course", courseStart: "x_courseStart", bankBalance: "x_livingFunds",
   };
   for (const [from, to] of Object.entries(map)) {
     const x = get(from);

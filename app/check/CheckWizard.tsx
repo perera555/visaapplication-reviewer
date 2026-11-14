@@ -413,7 +413,7 @@ export function CheckWizard() {
               details={details}
               setDetails={setDetails}
               onFillProfile={fillProfileFromDetails}
-              formExtra={{ destination: selected?.name ?? "", visaType: VISA_TYPES.find((v) => v.id === visaType)?.name ?? "" }}
+              formExtra={{ destination: selected?.name ?? "", visaType: VISA_TYPES.find((v) => v.id === visaType)?.name ?? "", _country: country, _visa: visaType }}
             />
 
             <ExtraDocs extras={extras} setExtras={setExtras} requirements={requirements} onMatch={(file, req) => setAttached((a) => [...a, { file, reqId: req.id, auto: true }])} />

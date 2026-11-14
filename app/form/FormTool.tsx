@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { PDFCheckBox, PDFDocument, PDFDropdown, PDFOptionList, PDFRadioGroup, PDFTextField } from "pdf-lib";
 import { FORM_SECTIONS, matchFieldValue } from "@/lib/formSchema";
+import { getCountryForm } from "@/lib/countryForms";
+import { COUNTRIES, flag, getCountry } from "@/lib/countries";
+import { VISA_TYPES, type VisaTypeId } from "@/lib/requirements";
 import { downloadBytes, textToPdf } from "@/lib/pdf";
 import { Field, Stepper } from "@/components/ui";
 import { extractFileText } from "@/components/SupportDocReview";
@@ -103,18 +106,61 @@ export function FormTool() {
     setGrabMsg(filled ? `✓ ${filled} field(s) filled from your documents: ${found.join(", ")}. Check each one and edit anything that is wrong.` : "No new details found (scanned images cannot be read). Fill the fields manually.");
   }
 
-  const completed = FORM_SECTIONS.map((s) => s.fields.filter((f) => values[f.key]?.trim()).length / s.fields.length);
+  // country- and visa-specific form (e.g. Australia Student 500 adds CoE, OSHC, GS questions)
+  const formCountry = values._country || "AU";
+  const formVisa = (values._visa || "visit") as VisaTypeId;
+  const cform = useMemo(() => getCountryForm(formCountry, formVisa), [formCountry, formVisa]);
+  const SECTIONS = useMemo(() => [...FORM_SECTIONS, ...cform.sections], [cform]);
+  function chooseForm(country: string, visa: string) {
+    update("_country", country);
+    update("_visa", visa);
+    update("destination", getCountry(country)?.name ?? country);
+    update("visaType", VISA_TYPES.find((v) => v.id === visa)?.name ?? visa);
+    setSection(0);
+  }
+
+  const completed = SECTIONS.map((s) => s.fields.filter((f) => values[f.key]?.trim()).length / s.fields.length);
   const pct = Math.round((completed.reduce((a, b) => a + b, 0) / completed.length) * 100);
 
   async function downloadGuided() {
-    const lines = FORM_SECTIONS.flatMap((s) => [`\n${s.title.toUpperCase()}`, ...s.fields.map((f) => `${f.label}: ${values[f.key] || "-"}`)]);
+    const lines = SECTIONS.flatMap((s) => [`\n${s.title.toUpperCase()}`, ...s.fields.map((f) => `${f.label}: ${values[f.key] || "-"}`)]);
     const text = `Applicant: ${values.givenNames ?? ""} ${values.surname ?? ""}\nGenerated: ${new Date().toLocaleDateString()}\n${lines.join("\n")}\n\nDeclaration: I confirm that the information given is true and complete.\n\nSignature: ____________________   Date: ______________`;
-    downloadBytes(await textToPdf(text, { title: "Visa Application Form" }), "visa-application-form.pdf");
+    downloadBytes(await textToPdf(`${cform.officialForm}
+Submit at: ${cform.officialUrl ?? "official embassy website"}
+${text}`, { title: cform.title }), `${cform.title.replace(/[^A-Za-z0-9]+/g, "-")}.pdf`);
   }
 
   return (
     <div className="space-y-6">
       <SaveBar savedAt={savedAt} newLabel="+ New form" onNew={() => (window.location.href = "/form?new=1")} />
+      <div className="scene">
+        <div className="rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-600 p-5 text-white shadow-2xl [transform:rotateX(3deg)]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label><span className="mb-1 block text-xs font-bold uppercase tracking-wide text-white/80">🌍 Which country are you applying to?</span>
+              <select className="input py-3 font-semibold text-slate-900" value={formCountry} onChange={(e) => chooseForm(e.target.value, formVisa)}>
+                {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{flag(c.code)} {c.name}</option>)}
+              </select>
+            </label>
+            <label><span className="mb-1 block text-xs font-bold uppercase tracking-wide text-white/80">Visa type</span>
+              <select className="input py-3 font-semibold text-slate-900" value={formVisa} onChange={(e) => chooseForm(formCountry, e.target.value)}>
+                {VISA_TYPES.map((v) => <option key={v.id} value={v.id}>{v.icon} {v.name}</option>)}
+              </select>
+            </label>
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div>
+              <div className="text-lg font-black">{cform.title}</div>
+              <div className="text-sm text-white/85">Official form: {cform.officialForm}</div>
+              <div className="mt-2 text-xs text-white/80">This form adds {cform.sections.reduce((n, s) => n + s.fields.length, 0)} {getCountry(formCountry)?.name}-specific questions to the standard ones.</div>
+              {cform.officialUrl && <a href={cform.officialUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-xl bg-white px-4 py-2 text-sm font-bold text-indigo-700 shadow hover:bg-indigo-50">Open official application ↗</a>}
+            </div>
+            <div className="rounded-2xl bg-white/10 p-3">
+              <div className="text-xs font-bold uppercase tracking-wide text-white/80">How to submit</div>
+              <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm">{cform.howToSubmit.map((h) => <li key={h}>{h}</li>)}</ol>
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="inline-flex rounded-2xl border border-line bg-white p-1 shadow-sm">
         {([["guided", "📝 Guided form"], ["pdf", "📄 Fill an official PDF form"]] as const).map(([id, l]) => (
           <button key={id} onClick={() => setTab(id)} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${tab === id ? "bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg" : "text-slate-600 hover:bg-slate-50"}`}>{l}</button>
@@ -156,12 +202,12 @@ export function FormTool() {
 
       {tab === "guided" ? (
         <>
-          <Stepper steps={FORM_SECTIONS.map((s) => `${s.icon} ${s.title}`)} current={section} onStep={setSection} />
+          <Stepper steps={SECTIONS.map((s) => `${s.icon} ${s.title}`)} current={section} onStep={setSection} />
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="card lg:col-span-2">
-              <h2 className="text-lg font-bold">{FORM_SECTIONS[section].icon} {FORM_SECTIONS[section].title}</h2>
+              <h2 className="text-lg font-bold">{SECTIONS[section].icon} {SECTIONS[section].title}</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {FORM_SECTIONS[section].fields.map((f) => (
+                {SECTIONS[section].fields.map((f) => (
                   <div key={f.key} className={f.wide || f.type === "textarea" ? "sm:col-span-2" : ""}>
                     <Field label={f.label}>
                       {f.type === "textarea" ? (
@@ -180,7 +226,7 @@ export function FormTool() {
               </div>
               <div className="mt-6 flex justify-between">
                 <button className="btn-ghost" disabled={section === 0} onClick={() => setSection((s) => s - 1)}>← Back</button>
-                {section < FORM_SECTIONS.length - 1 ? (
+                {section < SECTIONS.length - 1 ? (
                   <button className="btn-primary" onClick={() => setSection((s) => s + 1)}>Next section →</button>
                 ) : (
                   <button className="btn-primary" onClick={downloadGuided}>⬇ Download completed form (PDF)</button>
@@ -195,7 +241,7 @@ export function FormTool() {
                 </div>
                 <div className="mt-3 h-3 rounded-full bg-slate-100"><div className="h-3 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all" style={{ width: `${pct}%` }} /></div>
                 <ul className="mt-4 space-y-1.5 text-sm">
-                  {FORM_SECTIONS.map((s, i) => (
+                  {SECTIONS.map((s, i) => (
                     <li key={s.id} className="flex items-center justify-between">
                       <button className="hover:text-indigo-600" onClick={() => setSection(i)}>{s.icon} {s.title}</button>
                       <span className={completed[i] === 1 ? "text-emerald-600" : "text-slate-400"}>{Math.round(completed[i] * 100)}%</span>
