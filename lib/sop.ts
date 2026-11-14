@@ -6,7 +6,25 @@ export type JobEntry = { role: string; employer: string; from: string; to: strin
 export const EMPTY_EDU: EduEntry = { qualification: "", institution: "", from: "", to: "", result: "", certificate: false };
 export const EMPTY_JOB: JobEntry = { role: "", employer: "", from: "", to: "", current: false, duties: "", letter: false };
 
+export type TripEntry = { country: string; year: string; purpose: string };
+export type Family = { father: string; mother: string; brothers: string; sisters: string; position: string; marital: string; children: string; spouseJob: string; relativesAbroad: string; livesWith: string };
+export const EMPTY_FAMILY: Family = { father: "", mother: "", brothers: "", sisters: "", position: "", marital: "", children: "", spouseJob: "", relativesAbroad: "", livesWith: "" };
+export const TRIP_PURPOSES = ["tourism / holiday", "business", "visiting family or friends", "study", "work", "conference / training", "medical", "religious / pilgrimage", "transit", "sports event"];
+export const FAMILY_OPTIONS = {
+  parentJob: ["Government employee", "Retired government officer", "Private sector employee", "Business owner", "Self-employed", "Farmer", "Teacher", "Doctor / health worker", "Engineer", "Bank officer", "Retired bank officer", "Homemaker", "Retired", "Deceased"],
+  count: ["0", "1", "2", "3", "4", "5+"],
+  position: ["eldest child", "middle child", "youngest child", "only child", "eldest son", "eldest daughter", "younger son", "younger daughter"],
+  marital: ["Single", "Married", "Engaged", "Divorced", "Widowed"],
+  relativesAbroad: ["No relatives in the destination country", "A relative studies there", "A relative works there", "A relative is a citizen / permanent resident there"],
+  livesWith: ["my parents", "my spouse", "my spouse and children", "my parents, spouse and children", "on my own"],
+};
+
 export type SopInput = {
+  /** write empty "why" and career sections automatically from the other details */
+  autoWrite: boolean;
+  trips: TripEntry[];
+  travelNone: boolean;
+  family: Family;
   /** student → SOP / Genuine Student / study plan; worker → work visa cover letter (letter of explanation) */
   applicantType: "student" | "worker";
   /** auto = country format (Australia GS, Canada study plan); full = full letter SOP with every section */
@@ -33,6 +51,7 @@ export type SopInput = {
 export const EMPTY_SOP: SopInput = {
   applicantType: "student",
   style: "auto",
+  autoWrite: true, trips: [], travelNone: false, family: { father: "", mother: "", brothers: "", sisters: "", position: "", marital: "", children: "", spouseJob: "", relativesAbroad: "", livesWith: "" },
   destEmployer: "", destRole: "", destSalary: "", destStart: "", destContract: "", sponsorRef: "", whyEmployer: "", destAddress: "",
   education: [], jobs: [], travelHistory: "",
   fullName: "", nationality: "", homeCity: "", age: "", country: "", countryCode: "",
@@ -74,7 +93,7 @@ type FieldDef = [keyof SopInput, string, FieldType, string[]?];
 type Section = { section: string; fields: FieldDef[] };
 
 const ABOUT: Section = { section: "About you", fields: [["fullName", "Full name (as in passport)", "text"], ["nationality", "Nationality", "country"], ["homeCity", "Home city / country", "text"], ["age", "Age", "text"]] };
-const OTHER: Section = { section: "Other (optional)", fields: [["travelHistory", "Travel history (countries, year, purpose; visas complied with)", "textarea"], ["gaps", "Explain any study / work gaps", "textarea"], ["refusals", "Previous visa refusals and what changed", "textarea"], ["achievements", "Achievements, awards, volunteering", "textarea"], ["extra", "Anything else", "textarea"]] };
+const OTHER: Section = { section: "Other (optional)", fields: [["gaps", "Explain any study / work gaps", "textarea"], ["refusals", "Previous visa refusals and what changed", "textarea"], ["achievements", "Achievements, awards, volunteering", "textarea"], ["extra", "Anything else", "textarea"]] };
 
 /** Fields for students (SOP / Genuine Student / study plan). Education & jobs are edited as lists. */
 export const SOP_FIELDS: Section[] = [
@@ -83,7 +102,7 @@ export const SOP_FIELDS: Section[] = [
   { section: "English & studies", fields: [["prevSubjects", "Main subjects / final project of your last degree", "textarea"], ["englishTest", "English test (or MOI waiver)", "select", ENGLISH_TEST_OPTIONS], ["englishScore", "Score (overall band / total)", "text"]] },
   { section: "Why this course, university and country", fields: [["whyCourse", "Why this course (how it builds on your studies/work)", "textarea"], ["whyUniversity", "Why this university (modules, facilities, staff, industry links)", "textarea"], ["whyCountry", "Why this country", "textarea"], ["whyNotHome", "Why not study this in your home country", "textarea"]] },
   { section: "Career plans after the course", fields: [["shortGoal", "Short-term goal (1–3 years after graduating)", "textarea"], ["longGoal", "Long-term goal", "textarea"], ["jobProspects", "Job prospects at home (employers, roles, expected salary)", "textarea"]] },
-  { section: "Funding & ties to home", fields: [["funding", "How you will pay", "select", FUNDING_OPTIONS], ["sponsor", "Sponsor relationship", "select", RELATIONSHIP_OPTIONS], ["fundsAmount", "Funds available (e.g. LKR 12,000,000)", "text"], ["familyTies", "Family at home", "textarea"], ["assets", "Property / business / job to return to", "textarea"]] },
+  { section: "Funding & ties to home", fields: [["funding", "How you will pay", "select", FUNDING_OPTIONS], ["sponsor", "Sponsor relationship", "select", RELATIONSHIP_OPTIONS], ["fundsAmount", "Funds available (e.g. LKR 12,000,000)", "text"], ["familyTies", "Extra family details (optional)", "textarea"], ["assets", "Property / business / job to return to", "textarea"]] },
   OTHER,
 ];
 
@@ -159,6 +178,53 @@ function workText(i: SopInput) {
     .join("\n");
 }
 
+function travelText(i: SopInput) {
+  if (i.travelNone) return "This will be my first trip abroad. I understand the importance of complying with visa conditions and will do so fully.";
+  const trips = (i.trips ?? []).filter((t) => t.country);
+  if (trips.length) {
+    const list = trips.sort((a, b) => (a.year || "").localeCompare(b.year || "")).map((t) => `${t.country}${t.year ? ` in ${t.year}` : ""}${t.purpose ? ` (${t.purpose})` : ""}`);
+    const joined = list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}` : list[0];
+    return `I have previously travelled to ${joined}. On every trip I complied with all visa conditions and returned home on time.`;
+  }
+  return i.travelHistory?.trim() ? `I have travelled to ${i.travelHistory.trim().replace(/\.$/, "")}, and complied with all visa conditions.` : "";
+}
+
+function familyText(i: SopInput) {
+  const f = i.family ?? EMPTY_FAMILY;
+  const n = (x: string) => (x === "5+" ? "five or more" : ["no", "one", "two", "three", "four"][Number(x)] ?? x);
+  const job = (x: string) => (/deceased/i.test(x) ? "has passed away" : /retired|homemaker/i.test(x) ? `is ${/^retired$/i.test(x) ? "retired" : x.toLowerCase().replace(/^retired/, "a retired")}` : `is ${/^[aeiou]/i.test(x) ? "an" : "a"} ${x.toLowerCase()}`);
+  const sib = [f.brothers && f.brothers !== "0" ? `${n(f.brothers)} brother${f.brothers === "1" ? "" : "s"}` : "", f.sisters && f.sisters !== "0" ? `${n(f.sisters)} sister${f.sisters === "1" ? "" : "s"}` : ""].filter(Boolean).join(" and ");
+  const parts = [
+    f.position && `I am the ${f.position} in my family${sib ? `, with ${sib}` : ""}.`,
+    !f.position && sib && `I have ${sib}.`,
+    f.father && `My father ${job(f.father)}.`,
+    f.mother && `My mother ${job(f.mother)}.`,
+    f.marital && f.marital !== "Single" && `I am ${f.marital.toLowerCase()}${f.spouseJob ? `, and my spouse ${job(f.spouseJob)}` : ""}${f.children && f.children !== "0" ? `, with ${n(f.children)} child${f.children === "1" ? "" : "ren"}` : ""}.`,
+    f.marital === "Single" && "I am single.",
+    f.livesWith && `I live with ${f.livesWith} in ${i.homeCity.split(",").slice(-2).join(",").trim() || "my home country"}, and my close family will remain there while I study.`,
+    f.relativesAbroad && (/^no relatives/i.test(f.relativesAbroad) ? `I have no relatives in ${i.country || "the destination country"}.` : `${f.relativesAbroad.replace(/^A relative/, "One of my relatives")}.`),
+    i.familyTies.trim() && `${i.familyTies.trim().replace(/\.$/, "")}.`,
+  ].filter(Boolean);
+  return parts.join(" ");
+}
+
+/** Good default wording built only from details already entered (used when "write automatically" is on). */
+function auto(i: SopInput) {
+  const home = homeCountryOf(i);
+  const country = i.country || "the destination country";
+  const course = `${i.level} ${i.course}`.replace(/\s+/g, " ").trim() || "this course";
+  const lastEdu = [...(i.education ?? [])].filter((e) => e.qualification).sort((a, b) => (a.to || a.from).localeCompare(b.to || b.from)).pop();
+  const lastJob = [...(i.jobs ?? [])].filter((j) => j.role).sort((a, b) => (a.current ? 1 : 0) - (b.current ? 1 : 0) || (a.from || "").localeCompare(b.from || "")).pop();
+  return {
+    whyCourse: `it builds directly on ${lastEdu ? lastEdu.qualification.trim().replace(/^(?!my |a |the )/i, "my ") : "my previous studies"}${lastJob ? ` and my experience as ${lastJob.role.trim()}${lastJob.employer ? ` at ${lastJob.employer.trim()}` : ""}` : ""}, and it will give me the advanced, up-to-date knowledge I need to progress in my career`,
+    whyUniversity: `its ${course} is well structured and industry-relevant, covers the areas I want to specialise in, and offers the academic support, facilities and learning environment I need to succeed`,
+    whyCountry: `${country} is known worldwide for high-quality education. Its qualifications are internationally recognised and respected by employers in ${home}, and studying there will give me valuable international exposure in a safe, multicultural environment.`,
+    whyNotHome: `A programme with the same content, structure and international recognition is not available to me in ${home}. Studying in ${country} will also give me practical exposure to current technology and international best practice that I cannot gain locally.`,
+    shortGoal: `apply the knowledge and skills gained from the ${course} in a more senior professional role${lastJob ? `, building on my experience as ${lastJob.role.trim()}` : ""}`,
+    longGoal: `continue developing my career and contribute to the growth of my field in ${home}`,
+  };
+}
+
 function homeCountryOf(i: SopInput) {
   return i.nationality.trim() || i.homeCity.split(",").pop()?.trim() || "[home country]";
 }
@@ -174,8 +240,12 @@ export function sopFormat(code: string, style: "auto" | "full" = "auto"): "au-gs
   return code === "AU" ? "au-gs" : code === "CA" ? "ca-plan" : "standard";
 }
 
-export function buildSop(i: SopInput): string {
-  if (i.applicantType === "worker") return buildWorkLetter(i);
+export function buildSop(input: SopInput): string {
+  if (input.applicantType === "worker") return buildWorkLetter(input);
+  const a = input.autoWrite ? auto(input) : null;
+  const i: SopInput = a
+    ? { ...input, whyCourse: input.whyCourse || a.whyCourse, whyUniversity: input.whyUniversity || a.whyUniversity, whyCountry: input.whyCountry || a.whyCountry, whyNotHome: input.whyNotHome || a.whyNotHome, shortGoal: input.shortGoal || a.shortGoal, longGoal: input.longGoal || a.longGoal }
+    : input;
   const name = v(i.fullName, "Your full name");
   const course = `${v(i.level, "level")} ${v(i.course, "course name")}`.replace(/\s+/g, " ");
   const uni = v(i.university, "university");
@@ -197,8 +267,9 @@ export function buildSop(i: SopInput): string {
     `My studies will be funded by ${v(i.funding, "source of funds")}${i.sponsor && !/self/i.test(i.sponsor) ? ` (sponsor: my ${/both parents/i.test(i.sponsor) ? "parents" : i.sponsor.toLowerCase()})` : ""}${i.fundsAmount ? `, with ${i.fundsAmount} available` : ""}.`,
     "The financial documents enclosed show that these funds are genuinely available to me.",
   );
-  const ties = para(i.familyTies && `${i.familyTies.replace(/\.$/, "")}.`, i.assets && `I also have ${i.assets}, which I will return to.`, "I fully intend to comply with all visa conditions and return home after my studies.");
-  const travel = i.travelHistory.trim() ? `I have travelled to ${i.travelHistory.trim().replace(/\.$/, "")}, and complied with all visa conditions.` : "";
+  const fam = familyText(i);
+  const ties = para(fam, i.assets && `I also have ${i.assets}, which I will return to.`, "I fully intend to comply with all visa conditions and return home after my studies.");
+  const travel = travelText(i);
   const other = para(gapText(i), i.refusals && `I would like to disclose a previous visa refusal: ${i.refusals}.`, i.achievements && `Outside my studies, ${i.achievements}.`, i.extra);
 
   const fmt = sopFormat(i.countryCode, i.style);
@@ -211,16 +282,17 @@ export function buildSop(i: SopInput): string {
       "Dear Sir/Madam,",
       `Statement of Purpose: ${name}`,
       `I, ${name}, write this statement of purpose in support of my application to study the ${course} at ${uni}, ${country}${i.intake ? `, starting ${i.intake}` : ""}${i.duration ? ` (${i.duration})` : ""}.`,
-      `Education\n${para(educationText(i), i.prevSubjects && `During my studies I focused on ${i.prevSubjects}.`)}`,
-      englishText(i) && `English language\n${englishText(i)}`,
-      work && `Work experience\n${work}`,
-      gapText(i) && `Gaps in my studies\n${gapText(i)}`,
-      i.whyNotHome.trim() && `Why not study in ${homeCountry}\n${i.whyNotHome.trim()}`,
-      `Why ${country}\n${v(i.whyCountry, "specific reasons for choosing this country")}`,
-      `Why ${uni} and the ${course}\n${why}`,
-      `Future career plans and returning to ${homeCountry}\n${career}`,
-      travel && `Travel history\n${travel}`,
-      `Family background and financial support\n${para(i.familyTies && `${i.familyTies.replace(/\.$/, "")}.`, money, i.assets && `I also have ${i.assets}, which I will return to.`)}`,
+      `Education (Academic Qualifications by Date)\n${para(educationText(i), i.prevSubjects && `During my studies I focused on ${i.prevSubjects}.`)}`,
+      englishText(i) && `English Language (IELTS / Waiver)\n${englishText(i)}`,
+      work && `Work Experience\n${work}`,
+      gapText(i) && `Gaps (Study and Work Gaps Explained)\n${gapText(i)}`,
+      i.whyNotHome.trim() && `Why not Study in ${homeCountry}\n${i.whyNotHome.trim()}`,
+      `Reasons for Choosing ${country}\n${v(i.whyCountry, "specific reasons for choosing this country")}`,
+      `Reasons for Choosing the University and Course: ${uni}, ${course}\n${why}`,
+      `Future Career Plans and Returning to ${homeCountry}\n${career}`,
+      travel && `Travel History (Immigration History)\n${travel}`,
+      (fam || i.assets) && `Family Background\n${para(fam, i.assets && `I also have ${i.assets}, which I will return to.`)}`,
+      `Financial Support\n${money}`,
       para(i.refusals && `I would like to disclose a previous visa refusal: ${i.refusals}.`, i.achievements && `Outside my studies, ${i.achievements}.`, i.extra) && `Additional information\n${para(i.refusals && `I would like to disclose a previous visa refusal: ${i.refusals}.`, i.achievements && `Outside my studies, ${i.achievements}.`, i.extra)}`,
       `I fully intend to comply with all visa conditions and to return to ${homeCountry} on completion of my studies. I would be grateful if you would consider my application favourably.`,
       `Yours sincerely,\n\n\n${name}\n(Applicant)`,
@@ -277,7 +349,7 @@ export function buildWorkLetter(i: SopInput): string {
   const work = workText(i);
   const education = educationText(i);
   const english = englishText(i);
-  const travel = i.travelHistory.trim() ? `I have previously travelled to ${i.travelHistory.trim().replace(/\.$/, "")} and complied with all visa conditions.` : "";
+  const travel = travelText(i);
   return [
     `COVER LETTER: WORK VISA APPLICATION`,
     `Applicant: ${name}${i.nationality ? `, ${i.nationality} national` : ""}`,
@@ -287,7 +359,7 @@ export function buildWorkLetter(i: SopInput): string {
     `My experience\n${work || "[Add your jobs in the “Work experience” list]"}`,
     `My qualifications\n${para(education, english)}`,
     `Why I am suited to this role\n${v(i.whyEmployer, "explain how your skills and experience match the job")}`,
-    para(i.familyTies && `Family: ${i.familyTies}.`, i.assets && `At home I have ${i.assets}.`, i.shortGoal && `My plans: ${i.shortGoal}.`, travel, gapText(i), i.refusals && `I would like to disclose a previous visa refusal: ${i.refusals}.`, i.extra) || "",
+    para(familyText(i), i.assets && `At home I have ${i.assets}.`, i.shortGoal && `My plans: ${i.shortGoal}.`, travel, gapText(i), i.refusals && `I would like to disclose a previous visa refusal: ${i.refusals}.`, i.extra) || "",
     `I confirm that the information in this application is true, and I will comply with all the conditions of my visa.\n\nEnclosed: passport, signed employment contract / job offer, sponsorship or work permit document, qualification certificates, experience letters, English test result${i.travelHistory ? ", previous visas" : ""}.`,
     `Yours faithfully,\n\n\n${name}`,
   ].filter(Boolean).join("\n\n");

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { COUNTRIES, flag } from "@/lib/countries";
+import { EMPTY_FAMILY, FAMILY_OPTIONS, TRIP_PURPOSES, type Family, type TripEntry } from "@/lib/sop";
 import { EMPTY_EDU, EMPTY_JOB, EMPTY_SOP, QUALIFICATION_OPTIONS, SOP_FIELDS, WORK_FIELDS, buildSop, findGaps, sopFormat, wordCount, type EduEntry, type JobEntry, type SopInput } from "@/lib/sop";
 import { extractDetails } from "@/lib/extractDetails";
 import { analyzeCv } from "@/lib/cvAnalyzer";
@@ -77,10 +78,27 @@ export function SopWriter() {
         if (d.courseStart) add.intake = d.courseStart;
         if (d.duration) add.duration = d.duration;
       }
-      if (slot === "Transcripts / degree" && (d.course || d.institution)) newEdu.push({ ...EMPTY_EDU, qualification: d.course ?? "", institution: d.institution ?? "", certificate: true });
+      if (slot === "Academic certificate") {
+        const qual = d.course ?? t.match(/\b((?:Bachelor|Master|Doctor|BSc|BA|MSc|MBA|BEng|Higher National Diploma|Diploma|Certificate)[^\n.]{3,80})/)?.[1]?.trim() ?? "";
+        const year = t.match(/\b(19|20)\d{2}\b(?![\s\S]*\b(19|20)\d{2}\b)/)?.[0];
+        const cls = t.match(/\b(First Class(?: Honours)?|Second Class (?:Upper|Lower)(?: Division)?|Distinction|Merit|Pass|GPA[: ]*\d\.\d+)\b/i)?.[1];
+        newEdu.push({ ...EMPTY_EDU, qualification: qual || file.name.replace(/\.[^.]+$/, ""), institution: d.institution ?? "", to: year ? `${year}-12` : "", result: cls ?? "", certificate: true });
+      }
+      if (slot === "Experience letter") {
+        const from = t.match(/\b(?:since|from|joined (?:us )?on|with effect from)\s+(?:\d{1,2}(?:st|nd|rd|th)?\s+)?([A-Za-z]{3,9})?\.?\s*(\d{4})/i);
+        const to = t.match(/\b(?:to|until|till)\s+(?:\d{1,2}(?:st|nd|rd|th)?\s+)?([A-Za-z]{3,9})?\.?\s*(\d{4})/i);
+        const mon = (m?: string) => { const k = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"].indexOf((m ?? "").slice(0, 3).toLowerCase()); return k >= 0 ? String(k + 1).padStart(2, "0") : "01"; };
+        const current = /\b(is (?:currently )?employed|is working|presently|to date|till date|until now)\b/i.test(t) || !to;
+        newJobs.push({ ...EMPTY_JOB, role: d.occupation ?? "", employer: d.employer ?? "", from: from ? `${from[2]}-${mon(from[1])}` : "", to: !current && to ? `${to[2]}-${mon(to[1])}` : "", current, letter: true });
+      }
       if (d.englishTest) add.englishTest = d.englishTest;
       if (d.englishScore) add.englishScore = d.englishScore;
       if (d.bankBalance) add.fundsAmount = d.bankBalance;
+      if (slot === "Job offer / contract") {
+        if (d.employer) add.destEmployer = d.employer;
+        if (d.occupation) add.destRole = d.occupation;
+        if (d.income) add.destSalary = d.income;
+      }
       if (slot === "CV") {
         const cv = analyzeCv(t, "student");
         if (cv.name) add.fullName ??= cv.name;
@@ -131,12 +149,14 @@ export function SopWriter() {
     <div className="space-y-6">
       <div className="card">
         <h2 className="font-bold">1. Upload documents to fill the details (optional)</h2>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          {(worker ? ["CV", "Transcripts / degree", "Job offer / contract", "Experience letter", "IELTS / PTE"] : ["CV", "Transcripts / degree", "Offer letter", "IELTS / PTE", "Bank statement"]).map((slot) => (
+        <p className="mt-1 text-xs text-slate-500">Upload one file per document. Each academic certificate adds a qualification and each experience letter adds a job, so upload them one by one (or several at once).</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {(worker ? ["CV", "Job offer / contract", "Experience letter", "Academic certificate", "IELTS / PTE"] : ["Offer letter", "CV", "Academic certificate", "Experience letter", "IELTS / PTE", "Bank statement"]).map((slot) => (
             <label key={slot} className="cursor-pointer rounded-2xl border border-line bg-white p-3 text-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <div className="font-semibold">📎 {slot}</div>
-              <div className="text-xs text-indigo-700">Upload</div>
-              <input type="file" accept=".pdf,.txt" className="hidden" onChange={(e) => { upload(slot, e.target.files); e.target.value = ""; }} />
+              <div className="text-xs text-slate-500">{({ "Offer letter": "Course, university, address, start date", CV: "Jobs and qualifications", "Academic certificate": "Adds a qualification (one per certificate)", "Experience letter": "Adds a job (one per letter)", "IELTS / PTE": "Test and score, or MOI letter", "Bank statement": "Funds available", "Job offer / contract": "Job title, employer, salary" } as Record<string, string>)[slot]}</div>
+              <div className="mt-1 text-xs font-semibold text-indigo-700">📎 Upload</div>
+              <input type="file" multiple accept=".pdf,.txt" className="hidden" onChange={(e) => { upload(slot, e.target.files); e.target.value = ""; }} />
             </label>
           ))}
         </div>
@@ -171,7 +191,12 @@ export function SopWriter() {
               </select>
             </Field>
           )}
+          <label className="flex items-start gap-2 rounded-xl border border-indigo-200 bg-indigo-50/60 px-3 py-2 text-sm">
+            <input type="checkbox" className="mt-0.5 h-4 w-4 accent-indigo-600" checked={s.autoWrite} onChange={(e) => { setEdited(null); setS((x) => ({ ...x, autoWrite: e.target.checked })); }} />
+            <span><b>✨ Write the other sections automatically</b>: “why this course / university / country”, “why not study at home” and career plans are written from your course, qualifications and jobs. Anything you type below replaces the automatic text.</span>
+          </label>
           <EduJobEditors s={s} setList={setList} gaps={gaps} worker={worker} />
+          <TravelFamily s={s} update={(p) => { setEdited(null); setS((x) => ({ ...x, ...p })); }} />
           {sections.map((sec) => (
             <section key={sec.section}>
               <h3 className="label">{sec.section}</h3>
@@ -298,6 +323,68 @@ function EduJobEditors({ s, setList, gaps, worker }: { s: SopInput; setList: <K 
       {gaps.length > 0 && !s.gaps.trim() && (
         <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">⚠ Gap(s) found: <b>{gaps.join("; ")}</b>. Explain them in “Explain any study / work gaps” below (with evidence such as employment letters).</p>
       )}
+    </>
+  );
+}
+
+/** Travel history and family background, chosen from lists. */
+function TravelFamily({ s, update }: { s: SopInput; update: (p: Partial<SopInput>) => void }) {
+  const trips = s.trips ?? [];
+  const fam: Family = { ...EMPTY_FAMILY, ...(s.family ?? {}) };
+  const setTrip = (i: number, p: Partial<TripEntry>) => update({ trips: trips.map((t, k) => (k === i ? { ...t, ...p } : t)) });
+  const setFam = (p: Partial<Family>) => update({ family: { ...fam, ...p } });
+  const years = Array.from({ length: 27 }, (_, k) => String(2026 - k));
+  const sel = (label: string, value: string, opts: string[], on: (v: string) => void) => (
+    <label className="text-xs text-slate-500">{label}
+      <select className="input mt-1" value={value} onChange={(e) => on(e.target.value)}>
+        <option value="">Select…</option>
+        {opts.map((o) => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
+      </select>
+    </label>
+  );
+  return (
+    <>
+      <section>
+        <h3 className="label">✈️ Travel history (immigration history)</h3>
+        <label className="mb-2 flex items-center gap-2 text-sm"><input type="checkbox" className="accent-indigo-600" checked={s.travelNone} onChange={(e) => update({ travelNone: e.target.checked })} /> I have not travelled abroad</label>
+        {!s.travelNone && (
+          <div className="space-y-2">
+            {trips.map((t, i) => (
+              <div key={i} className="grid gap-2 rounded-2xl border border-line bg-slate-50/60 p-3 sm:grid-cols-[1fr_110px_1fr_auto]">
+                <select className="input" value={t.country} onChange={(e) => setTrip(i, { country: e.target.value })}>
+                  <option value="">Country…</option>
+                  {COUNTRIES.map((c) => <option key={c.code} value={c.name}>{flag(c.code)} {c.name}</option>)}
+                </select>
+                <select className="input" value={t.year} onChange={(e) => setTrip(i, { year: e.target.value })}>
+                  <option value="">Year…</option>
+                  {years.map((y) => <option key={y}>{y}</option>)}
+                </select>
+                <select className="input" value={t.purpose} onChange={(e) => setTrip(i, { purpose: e.target.value })}>
+                  <option value="">Purpose…</option>
+                  {TRIP_PURPOSES.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                </select>
+                <button type="button" className="text-xs text-rose-600" onClick={() => update({ trips: trips.filter((_, k) => k !== i) })}>Remove</button>
+              </div>
+            ))}
+            <button type="button" className="btn-ghost w-full" onClick={() => update({ trips: [...trips, { country: "", year: "", purpose: "" }] })}>+ Add trip</button>
+          </div>
+        )}
+      </section>
+      <section>
+        <h3 className="label">👨‍👩‍👧 Family background</h3>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {sel("Father", fam.father, FAMILY_OPTIONS.parentJob, (v) => setFam({ father: v }))}
+          {sel("Mother", fam.mother, FAMILY_OPTIONS.parentJob, (v) => setFam({ mother: v }))}
+          {sel("Brothers", fam.brothers, FAMILY_OPTIONS.count, (v) => setFam({ brothers: v }))}
+          {sel("Sisters", fam.sisters, FAMILY_OPTIONS.count, (v) => setFam({ sisters: v }))}
+          {sel("You are the", fam.position, FAMILY_OPTIONS.position, (v) => setFam({ position: v }))}
+          {sel("Marital status", fam.marital, FAMILY_OPTIONS.marital, (v) => setFam({ marital: v }))}
+          {fam.marital && fam.marital !== "Single" && sel("Spouse's occupation", fam.spouseJob, FAMILY_OPTIONS.parentJob, (v) => setFam({ spouseJob: v }))}
+          {fam.marital && fam.marital !== "Single" && sel("Children", fam.children, FAMILY_OPTIONS.count, (v) => setFam({ children: v }))}
+          {sel("You live with", fam.livesWith, FAMILY_OPTIONS.livesWith, (v) => setFam({ livesWith: v }))}
+          {sel("Relatives in the destination country", fam.relativesAbroad, FAMILY_OPTIONS.relativesAbroad, (v) => setFam({ relativesAbroad: v }))}
+        </div>
+      </section>
     </>
   );
 }
