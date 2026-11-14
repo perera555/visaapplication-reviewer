@@ -377,7 +377,8 @@ export function buildSop(input: SopInput): string {
   if (fmt === "full") {
     const homeCountry = homeCountryOf(i);
     return [
-      [name, i.homeCity].filter(Boolean).join("\n"),
+      // full name, then each part of the address on its own line (like the model SOP)
+      [name, ...i.homeCity.split(",").map((x) => x.trim()).filter(Boolean).map((x, k, all) => (k < all.length - 1 ? `${x},` : x))].join("\n"),
       "[Date]",
       ["The Visa Officer / Admissions Manager", uni, i.universityAddress.trim()].filter(Boolean).join("\n"),
       "Dear Sir/Madam,",
