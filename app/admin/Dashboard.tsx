@@ -9,6 +9,7 @@ import type { Application, ApplicationStatus, CustomRequirement, SupportDoc } fr
 import { Field, PasswordInput } from "@/components/ui";
 import { Registrations } from "./Registrations";
 import { AdminTools } from "./AdminTools";
+import { Domains } from "./Domains";
 
 type Me = { id: string; name: string; email: string; phone: string };
 type Config = { ai: boolean; email: boolean; sms: boolean; storage: "postgres" | "redis" | "file" | "ephemeral" };
@@ -19,6 +20,7 @@ const TABS = [
   ["reqs", "📋 Required documents"],
   ["support", "📚 Support documents"],
   ["admins", "👥 Admin users"],
+  ["domain", "🌐 Domain"],
   ["account", "⚙️ Account & settings"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
@@ -95,6 +97,7 @@ export function Dashboard() {
         {tab === "reqs" && <Requirements />}
         {tab === "support" && <SupportDocs />}
         {tab === "admins" && <AdminUsers me={me} />}
+        {tab === "domain" && <Domains />}
         {tab === "account" &&<Account me={me} setMe={setMe} cfg={cfg} />}
       </div>
     </div>

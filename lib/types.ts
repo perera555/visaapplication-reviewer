@@ -105,4 +105,4 @@ export const DOC_CATEGORIES = [
   "Travel insurance", "Previous visas", "Refusal letter", "CV", "Police clearance", "Medical report", "Other",
 ];
 
-export const MAX_REG_FILE = 4 * 1024 * 1024; // per upload (Vercel request limit is ~4.5 MB)
+export const MAX_REG_FILE =4 * 1024 * 1024; // per upload (Vercel request limit is ~4.5 MB)
