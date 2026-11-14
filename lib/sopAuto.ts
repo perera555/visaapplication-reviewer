@@ -67,7 +67,8 @@ export function sopContext(i: SopInput): Ctx {
     uniFacts: (i.uniFacts ?? "").trim(),
     course: `${i.level} ${i.course}`.replace(/\s+/g, " ").trim() || "this course",
     level: /master|mba|graduate|postgraduate|phd|doctor/i.test(i.level) ? "postgraduate" : "higher",
-    uni: i.university.trim() || "this university",
+    // "the University of Sydney", but "Edith Cowan University"
+    uni: (i.university.trim() ? i.university.trim().replace(/^(University|College|Institute) of /i, (m) => `the ${m}`) : "this university"),
     country: /^(United|Netherlands|Philippines|Czech|Maldives|Bahamas|Gambia|Dominican|Central African|Comoros|Marshall|Solomon)/.test(i.country.trim()) ? `the ${i.country.trim()}` : i.country.trim() || "the destination country",
     home,
     lastEdu: edu ? edu.qualification.trim().replace(/^(a|an|the) /i, "").replace(/^(?!my )/i, "my ") : "my previous studies",
@@ -221,7 +222,7 @@ const PAD: Record<string, string[]> = {
 
 const INTRO: Record<string, (c: Ctx) => string> = {
   whyCourse: (c) => `I have chosen the ${c.course}${c.cricos ? ` (${c.cricos})` : ""} because it fits both my academic background and my career plans in ${c.fieldIndustry}. In particular, it will give me ${c.fieldSkills}, which are in high demand in ${c.home}.`,
-  whyUniversity: (c) => `I chose ${c.uni}${c.campus ? `, ${c.campus}${c.city ? `, ${c.city}` : ""}` : c.city ? ` in ${c.city}` : ""}, after carefully comparing several universities that offer the ${c.course}.${c.scholarship ? ` I have been awarded the ${c.scholarship}, which reflects the university's confidence in my academic record.` : ""}${c.uniFacts ? ` ${c.uniFacts.replace(/\.?$/, ".")}` : ""}`,
+  whyUniversity: (c) => `I chose ${c.uni}${c.campus ? `, ${c.campus}${c.city ? `, ${c.city},` : ","}` : c.city ? ` in ${c.city}` : ""} after carefully comparing several universities that offer the ${c.course}.${c.scholarship ? ` I have been awarded the ${c.scholarship}, which reflects the university's confidence in my academic record.` : ""}${c.uniFacts ? ` ${c.uniFacts.replace(/\.?$/, ".")}` : ""}`,
   whyCountry: (c) => `Before choosing ${c.country}${c.city ? ` and ${c.city}` : ""}, I considered several study destinations.`,
   whyNotHome: (c) => `I carefully considered studying in ${c.home} before deciding to study abroad. An ${/^[AEIOU]/.test(c.demonym) ? "" : ""}${c.demonym} qualification in ${c.subject} will give me knowledge, recognition and exposure that a local programme cannot.`.replace("An Australian", "An Australian").replace(/An (?=[^AEIOU])/, "A "),
   shortGoal: (c) => `After completing the ${c.course}, I will return to ${c.home}.`,
