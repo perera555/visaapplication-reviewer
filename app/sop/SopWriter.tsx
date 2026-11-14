@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { COUNTRIES, flag } from "@/lib/countries";
+import { suggestSubjects } from "@/lib/sop";
 import { EXAMPLE_SOP, EMPTY_FAMILY, FAMILY_OPTIONS, REASON_OPTIONS, REFUSAL_CHANGES, REFUSAL_REASONS, TRIP_PURPOSES, composeField, type Family, type RefusalEntry, type TripEntry } from "@/lib/sop";
 import { EMPTY_EDU, EMPTY_JOB, EMPTY_SOP, QUALIFICATION_OPTIONS, SOP_FIELDS, WORK_FIELDS, buildSop, findGaps, sopFormat, wordCount, type EduEntry, type JobEntry, type SopInput } from "@/lib/sop";
 import { extractDetails } from "@/lib/extractDetails";
 import { analyzeCv } from "@/lib/cvAnalyzer";
 import { reviewDocument } from "@/lib/docReview";
-import { downloadBytes, textToPdf } from "@/lib/pdf";
+import { downloadBytes, estimatePages, textToPdf } from "@/lib/pdf";
 import { extractFileText } from "@/components/SupportDocReview";
 import { Field } from "@/components/ui";
 
@@ -83,6 +84,9 @@ export function SopWriter() {
         const year = t.match(/\b(19|20)\d{2}\b(?![\s\S]*\b(19|20)\d{2}\b)/)?.[0];
         const cls = t.match(/\b(First Class(?: Honours)?|Second Class (?:Upper|Lower)(?: Division)?|Distinction|Merit|Pass|GPA[: ]*\d\.\d+)\b/i)?.[1];
         newEdu.push({ ...EMPTY_EDU, qualification: qual || file.name.replace(/\.[^.]+$/, ""), institution: d.institution ?? "", to: year ? `${year}-12` : "", result: cls ?? "", certificate: true });
+        // module names from a transcript, e.g. "CS301 Database Systems 72 A" / "Software Engineering   Merit"
+        const mods = [...new Set(t.split("\n").map((l) => l.trim().match(/^(?:[A-Z]{2,5}\s?\d{3,5}[A-Z]?\s+)?([A-Z][A-Za-z&,\- ]{4,60}?)\s+(?:\d{1,3}(?:\.\d+)?%?|[A-F][+-]?|Pass|Merit|Distinction|Credit)\s*$/)?.[1]?.trim()).filter((m): m is string => Boolean(m) && !/total|gpa|semester|year|credits?|grade|result|average|class/i.test(m!)))].slice(0, 8);
+        if (mods.length) add.prevSubjects = mods.map((m) => m.toLowerCase()).join(", ");
       }
       if (slot === "Experience letter") {
         const from = t.match(/\b(?:since|from|joined (?:us )?on|with effect from)\s+(?:\d{1,2}(?:st|nd|rd|th)?\s+)?([A-Za-z]{3,9})?\.?\s*(\d{4})/i);
@@ -194,6 +198,15 @@ export function SopWriter() {
               </select>
             </Field>
           )}
+          {!worker && (
+            <Field label="Length">
+              <select className="input" value={s.length ?? "detailed"} onChange={(e) => { setEdited(null); setS((x) => ({ ...x, length: e.target.value as SopInput["length"] })); }}>
+                <option value="short">Short: about 2 pages</option>
+                <option value="standard">Standard: about 3–4 pages</option>
+                <option value="detailed">Detailed: about 5–6 pages</option>
+              </select>
+            </Field>
+          )}
           <label className="flex items-start gap-2 rounded-xl border border-indigo-200 bg-indigo-50/60 px-3 py-2 text-sm">
             <input type="checkbox" className="mt-0.5 h-4 w-4 accent-indigo-600" checked={s.autoWrite} onChange={(e) => { setEdited(null); setS((x) => ({ ...x, autoWrite: e.target.checked })); }} />
             <span><b>✨ Write the other sections automatically</b>: “why this course / university / country”, “why not study at home” and career plans are written from your course, qualifications and jobs. Anything you type below replaces the automatic text.</span>
@@ -212,6 +225,27 @@ export function SopWriter() {
                   return (
                     <div key={k} className={type === "textarea" ? "sm:col-span-2" : ""}>
                       <Field label={`${label}${filled[k] ? " ✨" : ""}`} hint={filled[k] ? `from your ${filled[k]}` : undefined}>
+                        {k === "prevSubjects" && (() => {
+                          const sug = suggestSubjects(s);
+                          if (!sug) return <p className="mb-2 text-xs text-slate-500">Add your last qualification above to get subject suggestions, or type your subjects.</p>;
+                          const have = val.split(/,\s*|\s+and\s+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+                          return (
+                            <div className="mb-2 rounded-xl border border-indigo-100 bg-indigo-50/40 p-2">
+                              <div className="text-[11px] font-semibold text-slate-500">Suggested for {sug.field}: tick the subjects you studied</div>
+                              <div className="mt-1 flex flex-wrap gap-1.5">
+                                {sug.subjects.map((sub) => {
+                                  const on = have.includes(sub.toLowerCase());
+                                  return (
+                                    <button type="button" key={sub} onClick={() => { const list = on ? have.filter((x) => x !== sub.toLowerCase()) : [...have, sub.toLowerCase()]; set("prevSubjects", list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}` : list[0] ?? ""); }}
+                                      className={`rounded-full border px-2.5 py-1 text-xs ${on ? "border-indigo-500 bg-indigo-600 text-white" : "border-line bg-white text-slate-700 hover:border-indigo-300"}`}>
+                                      {on ? "✓ " : ""}{sub}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
                         {k === "refusals" && <RefusalEditor s={s} update={(p) => { setEdited(null); setS((x) => ({ ...x, ...p })); }} />}
                         {REASON_OPTIONS[k] && (
                           <div className="mb-2 rounded-xl border border-indigo-100 bg-indigo-50/40 p-2">
@@ -255,11 +289,11 @@ export function SopWriter() {
 
         <div className="space-y-3 lg:sticky lg:top-20 lg:self-start">
           <div className="flex flex-wrap items-center gap-2">
-            <button className="btn-primary" onClick={async () => downloadBytes(await textToPdf(text), `${(s.fullName || "SOP").replace(/\W+/g, "-")}-SOP.pdf`)}>⬇ Download PDF</button>
+            <button className="btn-primary" onClick={async () => downloadBytes(await textToPdf(text, { size: 12, spacing: 1.5, headings: true, pageNumbers: true }), `${(s.fullName || "SOP").replace(/\W+/g, "-")}-SOP.pdf`)}>⬇ Download PDF</button>
             <button className="btn-ghost" onClick={() => navigator.clipboard.writeText(text).then(() => setMsg("Copied."))}>📋 Copy</button>
             {ai && <button className="btn-ghost" disabled={busy} onClick={polish}>{busy ? "Writing…" : "✨ Improve with AI"}</button>}
             {edited !== null && <button className="btn-ghost" onClick={() => setEdited(null)}>↺ Reset to generated</button>}
-            <span className="ml-auto text-xs text-slate-500">{wordCount(text)} words · {missing} to fill</span>
+            <span className="ml-auto text-xs text-slate-500">{wordCount(text)} words · ≈ {estimatePages(text)} pages · {missing} to fill</span>
           </div>
           <textarea className="min-h-[560px] w-full rounded-2xl border border-line bg-white p-6 font-serif text-[15px] leading-relaxed shadow-xl outline-none" value={text} onChange={(e) => setEdited(e.target.value)} />
           <div className={`card ${review.verdict === "error" ? "border-rose-300" : review.verdict === "warning" ? "border-amber-300" : "border-emerald-300"}`}>

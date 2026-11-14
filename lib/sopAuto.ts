@@ -3,10 +3,11 @@
 // Padding only uses neutral reasons that make no personal factual claim.
 import type { SopInput } from "./sop";
 
-type Ctx = { course: string; level: string; uni: string; country: string; home: string; lastEdu: string; prevSubjects: string; role: string; employer: string; duties: string; modules: string };
+type Ctx = { finalProject: string; course: string; level: string; uni: string; country: string; home: string; lastEdu: string; prevSubjects: string; role: string; employer: string; duties: string; modules: string };
 type Expander = (c: Ctx) => string;
 
 const MIN_WORDS = 150;
+const minWords = (i: SopInput) => (i.length === "short" ? 90 : i.length === "standard" ? MIN_WORDS : 280);
 const words = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
 
 export function sopContext(i: SopInput): Ctx {
@@ -14,6 +15,7 @@ export function sopContext(i: SopInput): Ctx {
   const job = [...(i.jobs ?? [])].filter((j) => j.role).sort((a, b) => (a.current ? 1 : 0) - (b.current ? 1 : 0) || (a.from || "").localeCompare(b.from || "")).pop();
   const home = i.nationality.trim() || i.homeCity.split(",").pop()?.trim() || "my home country";
   return {
+    finalProject: (i.finalProject ?? "").trim(),
     course: `${i.level} ${i.course}`.replace(/\s+/g, " ").trim() || "this course",
     level: /master|mba|graduate|postgraduate|phd|doctor/i.test(i.level) ? "postgraduate" : "higher",
     uni: i.university.trim() || "this university",
@@ -33,7 +35,7 @@ const at = (c: Ctx) => (c.employer ? ` at ${c.employer}` : "");
 const EXPAND: Record<string, Record<string, Expander>> = {
   whyCourse: {
     "it is the natural next step in my academic progression": (c) => `After completing ${c.lastEdu}, a ${c.level} qualification is the natural next step in my academic progression. It will move me from a broad understanding of the subject to advanced, specialised knowledge, and develop the analytical, problem-solving and research skills expected of a ${c.level === "postgraduate" ? "postgraduate" : "qualified"} professional.`,
-    "it builds on my previous degree": (c) => `The course builds directly on ${c.lastEdu}.${c.prevSubjects ? ` The foundation I gained in ${c.prevSubjects} means I can engage with advanced topics from the start.` : " The foundation I gained there means I can engage with advanced topics from the start."} This continuity will help me make the most of the programme rather than repeating what I have already learned.`,
+    "it builds on my previous degree": (c) => `The course builds directly on ${c.lastEdu}.${c.prevSubjects ? ` The foundation I gained in ${c.prevSubjects} means I can engage with advanced topics from the start.` : " The foundation I gained there means I can engage with advanced topics from the start."}${c.finalProject ? ` My final project, “${c.finalProject}”, gave me practical experience of independent research and problem-solving that I will build on at postgraduate level.` : ""} This continuity will help me make the most of the programme rather than repeating what I have already learned.`,
     "it builds on my work experience": (c) => (c.role ? `It also builds on my practical experience as ${c.role}${at(c)}${c.duties ? `, where I ${c.duties.replace(/^./, (x) => x.toLowerCase())}` : ""}. This experience has shown me exactly where my knowledge needs to grow, and the course addresses those areas.` : `It also builds on my practical work experience, which has shown me exactly where my knowledge needs to grow, and the course addresses those areas.`),
     "it fills the skill gaps I need for my career": () => `In my work I have identified specific skill gaps that limit my progress. The course is designed to close those gaps through structured learning, up-to-date content and assessed projects, so that I can take on more responsible and complex work.`,
     "it is needed for promotion in my current field": () => `In my field, senior positions increasingly require a postgraduate qualification. Completing this course will make me eligible for more senior roles, greater responsibility and better remuneration when I return.`,
@@ -106,12 +108,12 @@ const EXPAND: Record<string, Record<string, Expander>> = {
 
 /** Neutral reasons used only to reach 150 words (no personal factual claims). */
 const PAD: Record<string, string[]> = {
-  whyCourse: ["it is the natural next step in my academic progression", "it combines theory with practical, hands-on projects", "I want to specialise further in this area", "it is an industry-recognised qualification"],
-  whyUniversity: ["the course modules match my career goals", "experienced, research-active teaching staff", "modern facilities, labs and learning resources", "good support services for international students"],
-  whyCountry: ["its qualifications are recognised worldwide", "it has a high-quality, well-regulated education system", "teaching is practical and industry-focused", "it is safe and multicultural"],
-  whyNotHome: ["studying locally gives limited international exposure", "local postgraduate courses are more theory-based than practical", "local facilities and curriculum are less up to date"],
-  shortGoal: ["join a leading company in my field at home"],
-  longGoal: ["become a senior manager or specialist in my field", "train and mentor others in my field", "contribute to my country's development in this field"],
+  whyCourse: ["it is the natural next step in my academic progression", "it combines theory with practical, hands-on projects", "I want to specialise further in this area", "it is an industry-recognised qualification", "it fills the skill gaps I need for my career"],
+  whyUniversity: ["the course modules match my career goals", "experienced, research-active teaching staff", "modern facilities, labs and learning resources", "good support services for international students", "it welcomes a diverse international student community", "its research focuses on solving real-world problems"],
+  whyCountry: ["its qualifications are recognised worldwide", "it has a high-quality, well-regulated education system", "teaching is practical and industry-focused", "it is safe and multicultural", "it is a world leader in education standards and facilities"],
+  whyNotHome: ["studying locally gives limited international exposure", "local postgraduate courses are more theory-based than practical", "local facilities and curriculum are less up to date", "local programmes lack international recognition"],
+  shortGoal: ["join a leading company in my field at home", "work as a specialist / consultant in my field"],
+  longGoal: ["become a senior manager or specialist in my field", "train and mentor others in my field", "contribute to my country's development in this field", "lead major projects in my industry"],
 };
 
 const INTRO: Record<string, (c: Ctx) => string> = {
@@ -139,8 +141,9 @@ export function composeLong(key: string, i: SopInput): string {
   const picked = (i.picks?.[key] ?? []).filter((p) => ex[p]);
   const parts: string[] = [INTRO[key]?.(c) ?? "", ...picked.map((p) => ex[p](c))];
   const out = () => [...parts, OUTRO[key]?.(c) ?? ""].filter(Boolean).join(" ");
+  const target = minWords(i);
   for (const p of PAD[key] ?? []) {
-    if (words(out()) >= MIN_WORDS) break;
+    if (words(out()) >= target) break;
     if (!picked.includes(p) && ex[p]) parts.push(ex[p](c));
   }
   return out();

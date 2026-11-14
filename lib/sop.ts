@@ -46,6 +46,8 @@ export type SopInput = {
   applicantType: "student" | "worker";
   /** auto = country format (Australia GS, Canada study plan); full = full letter SOP with every section */
   style: "auto" | "full";
+  /** short ≈ 2 pages, standard ≈ 3–4 pages, detailed ≈ 5–6 pages */
+  length: "short" | "standard" | "detailed";
   destEmployer: string; destRole: string; destSalary: string; destStart: string; destContract: string; sponsorRef: string; whyEmployer: string; destAddress: string;
   education: EduEntry[];
   jobs: JobEntry[];
@@ -54,6 +56,7 @@ export type SopInput = {
   country: string; // destination country name
   countryCode: string;
   level: string; course: string; university: string; universityAddress: string; intake: string; duration: string;
+  finalProject: string;
   prevDegree: string; prevInstitution: string; prevYear: string; prevResult: string; prevSubjects: string;
   englishTest: string; englishScore: string;
   workExperience: string; // free text: role, employer, years, duties
@@ -68,12 +71,13 @@ export type SopInput = {
 export const EMPTY_SOP: SopInput = {
   applicantType: "student",
   style: "auto",
+  length: "detailed",
   picks: {}, refusalList: [],
   autoWrite: true, trips: [], travelNone: false, family: { father: "", mother: "", brothers: "", sisters: "", position: "", marital: "", children: "", spouseJob: "", relativesAbroad: "", livesWith: "" },
   destEmployer: "", destRole: "", destSalary: "", destStart: "", destContract: "", sponsorRef: "", whyEmployer: "", destAddress: "",
   education: [], jobs: [], travelHistory: "",
   fullName: "", nationality: "", homeCity: "", age: "", country: "", countryCode: "",
-  level: "", course: "", university: "", universityAddress: "", intake: "", duration: "",
+  level: "", course: "", university: "", universityAddress: "", intake: "", duration: "", finalProject: "",
   prevDegree: "", prevInstitution: "", prevYear: "", prevResult: "", prevSubjects: "",
   englishTest: "", englishScore: "", workExperience: "",
   whyCourse: "", whyUniversity: "", whyCountry: "", whyNotHome: "", modules: "",
@@ -117,7 +121,7 @@ const OTHER: Section = { section: "Other (optional)", fields: [["gaps", "Explain
 export const SOP_FIELDS: Section[] = [
   ABOUT,
   { section: "Course you applied for", fields: [["level", "Course level", "select", LEVEL_OPTIONS], ["course", "Course name (e.g. Data Science)", "text"], ["university", "University / college (filled from offer letter)", "text"], ["universityAddress", "University address (filled from offer letter)", "textarea"], ["intake", "Intake", "select", INTAKE_OPTIONS], ["duration", "Course duration", "select", DURATION_OPTIONS], ["modules", "Modules / research areas that interest you", "textarea"]] },
-  { section: "English & studies", fields: [["prevSubjects", "Main subjects / final project of your last degree", "textarea"], ["englishTest", "English test (or MOI waiver)", "select", ENGLISH_TEST_OPTIONS], ["englishScore", "Score (overall band / total)", "text"]] },
+  { section: "English & studies", fields: [["prevSubjects", "Main subjects of your last degree (tick suggestions or type)", "textarea"], ["finalProject", "Final project / dissertation title (optional)", "text"], ["englishTest", "English test (or MOI waiver)", "select", ENGLISH_TEST_OPTIONS], ["englishScore", "Score (overall band / total)", "text"]] },
   { section: "Why this course, university and country", fields: [["whyCourse", "Why this course (how it builds on your studies/work)", "textarea"], ["whyUniversity", "Why this university (modules, facilities, staff, industry links)", "textarea"], ["whyCountry", "Why this country", "textarea"], ["whyNotHome", "Why not study this in your home country", "textarea"]] },
   { section: "Career plans after the course", fields: [["shortGoal", "Short-term goal (1–3 years after graduating)", "textarea"], ["longGoal", "Long-term goal", "textarea"], ["jobProspects", "Job prospects at home (employers, roles, expected salary)", "textarea"]] },
   { section: "Funding & ties to home", fields: [["funding", "How you will pay", "select", FUNDING_OPTIONS], ["sponsor", "Sponsor relationship", "select", RELATIONSHIP_OPTIONS], ["fundsAmount", "Funds available (e.g. LKR 12,000,000)", "text"], ["familyTies", "Extra family details (optional)", "textarea"], ["assets", "Property / business / job to return to", "textarea"]] },
@@ -459,3 +463,21 @@ export const EXAMPLE_SOP: SopInput = {
   gaps: "Between my studies I was in continuous full-time employment, which my employment letters confirm, while also coaching school sports part time.",
   achievements: "I represented my school in cricket and rugby, was a member of the debating team, and coach school sports teams part time",
 };
+
+/** Typical subjects by field, suggested from the applicant's last qualification. */
+export const SUBJECTS_BY_FIELD: { field: string; match: RegExp; subjects: string[] }[] = [
+  { field: "Computing / IT", match: /comput|software|information tech|\bit\b|cyber|data|network|systems/i, subjects: ["programming", "software engineering", "databases", "networking", "systems analysis and design", "web development", "object-oriented programming", "data structures and algorithms", "operating systems", "cyber security", "project management", "mobile application development"] },
+  { field: "Business / Management", match: /business|management|mba|commerce|marketing|hrm|human resource/i, subjects: ["management principles", "marketing", "organisational behaviour", "human resource management", "business economics", "strategic management", "operations management", "business law", "entrepreneurship", "project management"] },
+  { field: "Accounting / Finance", match: /account|financ|banking|economics|cima|acca/i, subjects: ["financial accounting", "management accounting", "corporate finance", "auditing", "taxation", "business law", "economics", "financial reporting", "investment analysis"] },
+  { field: "Engineering", match: /engineer|mechanical|electrical|civil|electronic|mechatronic/i, subjects: ["engineering mathematics", "mechanics", "electrical circuits", "thermodynamics", "materials science", "engineering design", "control systems", "structural analysis", "project management"] },
+  { field: "Nursing / Health", match: /nurs|health|medic|pharma|biomed|physio|public health/i, subjects: ["anatomy and physiology", "pharmacology", "patient care", "community health", "health promotion", "microbiology", "clinical practice", "research methods"] },
+  { field: "Education / Teaching", match: /education|teaching|pedagog|early childhood/i, subjects: ["educational psychology", "curriculum development", "teaching methods", "classroom management", "assessment and evaluation", "inclusive education"] },
+  { field: "Hospitality / Tourism", match: /hospitality|hotel|tourism|culinary|event/i, subjects: ["hospitality operations", "food and beverage management", "front office operations", "tourism management", "customer service", "event management"] },
+  { field: "Science", match: /science|biology|chemistry|physics|bsc/i, subjects: ["mathematics", "statistics", "laboratory methods", "research methods", "chemistry", "biology", "physics", "data analysis"] },
+  { field: "Arts / Social sciences", match: /arts|social|psychology|sociology|law|english|media|communication/i, subjects: ["research methods", "academic writing", "critical analysis", "communication", "sociology", "psychology"] },
+];
+export function suggestSubjects(i: SopInput): { field: string; subjects: string[] } | null {
+  const last = [...(i.education ?? [])].filter((e) => e.qualification).pop()?.qualification ?? i.prevDegree ?? "";
+  const hay = `${last} ${i.course}`;
+  return SUBJECTS_BY_FIELD.find((x) => x.match.test(last)) ?? SUBJECTS_BY_FIELD.find((x) => x.match.test(hay)) ?? null;
+}

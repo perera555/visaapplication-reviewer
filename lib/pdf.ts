@@ -26,13 +26,16 @@ function wrap(text: string, font: PDFFont, size: number, width: number) {
   return out;
 }
 
-export async function textToPdf(text: string, opts: { title?: string; size?: number } = {}) {
+/** A short line without a full stop that is followed by a paragraph is treated as a section heading. */
+const isHeading = (line: string) => line.length > 2 && line.length < 110 && !/[.,;:]$/.test(line) && !/^(Yours|Dear|\[Date\]|\(Applicant\))/.test(line) && /^[A-Z]/.test(line);
+
+export async function textToPdf(text: string, opts: { title?: string; size?: number; spacing?: number; headings?: boolean; pageNumbers?: boolean } = {}) {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.TimesRoman);
   const bold = await doc.embedFont(StandardFonts.TimesRomanBold);
   const size = opts.size ?? 11.5;
-  const margin = 64;
-  const lh = size * 1.45;
+  const margin = opts.headings ? 72 : 64; // 2.5 cm for document-style output
+  const lh = size * (opts.spacing ?? 1.45);
   let page = doc.addPage([595.28, 841.89]);
   const width = page.getWidth() - margin * 2;
   let y = page.getHeight() - margin;
@@ -40,17 +43,32 @@ export async function textToPdf(text: string, opts: { title?: string; size?: num
     page.drawText(safe(opts.title), { x: margin, y, size: 15, font: bold, color: rgb(0.1, 0.1, 0.3) });
     y -= 28;
   }
-  for (const line of wrap(safe(text), font, size, width)) {
-    if (y < margin) {
-      page = doc.addPage([595.28, 841.89]);
-      y = page.getHeight() - margin;
+  const newPage = () => {
+    page = doc.addPage([595.28, 841.89]);
+    y = page.getHeight() - margin;
+  };
+  const paras = safe(text).split("\n");
+  for (let p = 0; p < paras.length; p++) {
+    const raw = paras[p];
+    const heading = opts.headings && isHeading(raw.trim()) && (paras[p + 1] ?? "").trim().length > 0 && !/^\[?Date/.test(raw);
+    const f = heading || /^Subject:/i.test(raw) ? bold : font;
+    if (heading && y < margin + lh * 3) newPage(); // keep a heading with its paragraph
+    if (heading) y -= lh * 0.4;
+    for (const line of wrap(raw, f, size, width)) {
+      if (y < margin) newPage();
+      if (line) page.drawText(line, { x: margin, y, size, font: f });
+      y -= line ? lh : lh * 0.6;
     }
-    const isSubject = /^Subject:/i.test(line);
-    page.drawText(line, { x: margin, y, size, font: isSubject ? bold : font });
-    y -= lh;
+  }
+  if (opts.pageNumbers) {
+    const pages = doc.getPages();
+    pages.forEach((pg, n) => pg.drawText(`${n + 1}`, { x: pg.getWidth() / 2 - 3, y: 30, size: 10, font }));
   }
   return doc.save();
 }
+
+/** Rough page estimate for the document-style PDF (12 pt, 1.5 spacing, A4). */
+export const estimatePages = (text: string) => Math.max(1, Math.round((text.trim().split(/\s+/).length / 330) * 10) / 10);
 
 export function downloadBytes(bytes: Uint8Array | string, name: string, type = "application/pdf") {
   const blob = new Blob([typeof bytes === "string" ? bytes : new Uint8Array(bytes)], { type });
