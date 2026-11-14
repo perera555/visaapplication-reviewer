@@ -82,8 +82,8 @@ export async function searchRegistrations(q: string) {
   );
 }
 
-export async function putRegFile(regId: string, fileId: string, file: File) {
-  await kvSet(`regfile:${regId}:${fileId}`, { name: file.name, type: file.type || "application/octet-stream", data: Buffer.from(await file.arrayBuffer()).toString("base64") });
+export async function putRegFile(regId: string, fileId: string, file: File, name = file.name) {
+  await kvSet(`regfile:${regId}:${fileId}`, { name, type: file.type || "application/octet-stream", data: Buffer.from(await file.arrayBuffer()).toString("base64") });
 }
 export const getRegFile = (regId: string, fileId: string) => kvGet<{ name: string; type: string; data: string }>(`regfile:${regId}:${fileId}`);
 

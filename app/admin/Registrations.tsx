@@ -175,7 +175,7 @@ function AdminDocReview({ reg }: { reg: Registration }) {
 function RegistrationDetail({ reg, onChange, onDeleted }: { reg: Registration; onChange: () => void; onDeleted: () => void }) {
   const [d, setD] = useState<RegistrationDetails>({ ...EMPTY_REG_DETAILS, ...reg.details });
   const [notes, setNotes] = useState(reg.adminNotes);
-  const [cat, setCat] = useState(DOC_CATEGORIES[0]);
+  const [cat, setCat] = useState("Auto");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState("");
   const [asOriginal, setAsOriginal] = useState(false);
@@ -325,7 +325,11 @@ function RegistrationDetail({ reg, onChange, onDeleted }: { reg: Registration; o
                     {doc.type === "manual" ? (
                       <span className="min-w-0 flex-1 truncate">✍️ {doc.name} <span className="text-xs text-slate-400">(recorded manually, no file)</span></span>
                     ) : (
-                      <a className="min-w-0 flex-1 truncate text-indigo-700 hover:underline" href={`/api/registrations/${reg.id}/documents/${doc.id}`} target="_blank" rel="noreferrer">📄 {doc.name}</a>
+                      <a className="min-w-0 flex-1 truncate text-indigo-700 hover:underline" href={`/api/registrations/${reg.id}/documents/${doc.id}`} target="_blank" rel="noreferrer" title={doc.originalName ? `Uploaded as: ${doc.originalName}` : undefined}>
+                        📄 {doc.name}
+                        {doc.autoDetected && <span className="chip ml-1 bg-indigo-50 text-indigo-700">🤖 auto</span>}
+                        {doc.originalName && doc.originalName !== doc.name && <span className="block truncate text-[11px] text-slate-400">uploaded as {doc.originalName}</span>}
+                      </a>
                     )}
                     <button type="button" onClick={() => setOpenDoc(openDoc === doc.id ? null : doc.id)} title="Original / fake check"><AuthBadge auth={doc.auth} manual={doc.manual} /></button>
                     {doc.type === "manual" ? (
@@ -357,7 +361,10 @@ function RegistrationDetail({ reg, onChange, onDeleted }: { reg: Registration; o
           ))}
         </div>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <select className="input sm:max-w-xs" value={cat} onChange={(e) => setCat(e.target.value)}>{DOC_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>
+          <select className="input sm:max-w-xs" value={cat} onChange={(e) => setCat(e.target.value)}>
+            <option value="Auto">🤖 Auto-detect document type</option>
+            {DOC_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+          </select>
           <label className="btn-ghost cursor-pointer">+ Add document<input type="file" multiple className="hidden" onChange={(e) => { upload(e.target.files); e.target.value = ""; }} /></label>
           {busy && <span className="text-sm text-indigo-700">{busy}</span>}
         </div>

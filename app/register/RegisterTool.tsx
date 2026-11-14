@@ -8,9 +8,10 @@ import { extractDetails, iso3to2, type Detail } from "@/lib/extractDetails";
 import { DOC_CATEGORIES, EMPTY_REG_DETAILS, type RegistrationDetails } from "@/lib/types";
 import { SupportDocReview, extractFileText } from "@/components/SupportDocReview";
 import { downloadBytes } from "@/lib/pdf";
+import { classifyCategory, standardFileName } from "@/lib/docClassify";
 import { Field, Stepper } from "@/components/ui";
 
-type QueuedDoc = { id: string; category: string; file: File; status: "waiting" | "uploading" | "done" | "error"; error?: string };
+type QueuedDoc = { id: string; category: string; file: File; status: "waiting" | "uploading" | "done" | "error"; error?: string; auto?: boolean };
 type Done = { id: string; regNo: string; token: string };
 const KEY = "visa-registration-v1";
 
@@ -79,6 +80,19 @@ export function RegisterTool() {
       return next;
     });
     setFilledFrom((x) => ({ ...filled, ...x }));
+  }
+
+  /** Upload any document: identify what it is automatically, then queue it under that category. */
+  async function addAuto(list: FileList | null) {
+    if (!list?.length) return;
+    for (const file of [...list]) {
+      setReading(`Identifying ${file.name}…`);
+      const text = await extractFileText(file);
+      const category = classifyCategory(file.name, text);
+      setDocs((x) => [...x, { id: crypto.randomUUID(), category, file, status: "waiting", auto: true }]);
+      if (text) applyDetails(extractDetails(text, file.name), `${category} (${file.name})`);
+    }
+    setReading("");
   }
 
   async function addDoc(category: string, list: FileList | null) {
@@ -198,7 +212,7 @@ export function RegisterTool() {
     window.location.reload();
   }
 
-  const uploaded = (cat: string) => docs.filter((x) => x.category === cat);
+  const uploaded = (cat: string) => docs.filter((x) => x.category === cat && !x.auto);
 
   return (
     <div className="space-y-6">
@@ -208,6 +222,31 @@ export function RegisterTool() {
         <div className="card">
           <h2 className="text-lg font-bold">📎 Upload your documents one by one</h2>
           <p className="text-sm text-slate-500">Each document gets its own upload. Details are read from PDFs and filled in for you, and you can still change anything in the next step.</p>
+          <div className="mt-4 rounded-2xl border-2 border-dashed border-indigo-300 bg-indigo-50/50 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-2xl">🤖</span>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold">Upload any document: we identify it</div>
+                <div className="text-xs text-slate-600">We work out what each document is (passport, bank statement, offer letter…) and save it as “{d.fullName || "Your name"} - Passport.pdf”. You can change the type if it is wrong.</div>
+              </div>
+              <label className="btn-primary cursor-pointer">📎 Upload & identify
+                <input type="file" multiple accept=".pdf,image/*,.doc,.docx" className="hidden" onChange={(e) => { addAuto(e.target.files); e.target.value = ""; }} />
+              </label>
+            </div>
+            {docs.some((q) => q.auto) && (
+              <ul className="mt-3 space-y-1.5">
+                {docs.filter((q) => q.auto).map((q) => (
+                  <li key={q.id} className="flex flex-col gap-2 rounded-xl bg-white px-3 py-2 text-sm sm:flex-row sm:items-center">
+                    <span className="min-w-0 flex-1 truncate">📄 {q.file.name} <span className="text-slate-400">→ saved as</span> <b>{standardFileName(d.fullName, q.category, q.file.name, docs.filter((x) => x.category === q.category && docs.indexOf(x) < docs.indexOf(q)).length)}</b></span>
+                    <select className="input py-1 text-xs sm:max-w-[220px]" value={q.category} onChange={(e) => setDocs((x) => x.map((y) => (y.id === q.id ? { ...y, category: e.target.value } : y)))}>
+                      {DOC_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                    </select>
+                    <button className="text-xs text-rose-600" onClick={() => setDocs((x) => x.filter((y) => y.id !== q.id))}>✕</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {UPLOAD_SLOTS.map((cat) => (
               <div key={cat} className={`rounded-2xl border p-3 ${uploaded(cat).length ? "border-emerald-200 bg-emerald-50/60" : "border-line"}`}>

@@ -68,6 +68,10 @@ export const MANUAL_LABEL: Record<ManualVerification["status"], string> = { orig
 
 export type RegDocument = {
   id: string; category: string; name: string; type: string; size: number; uploadedAt: string; by: "customer" | "admin";
+  /** file name as uploaded (the stored name is "<customer> - <category>.ext") */
+  originalName?: string;
+  /** true when the category was detected automatically */
+  autoDetected?: boolean;
   auth?: AuthSummary;
   manual?: ManualVerification;
 };

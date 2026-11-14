@@ -2,6 +2,8 @@ import { getSessionAdmin, unauthorized } from "@/lib/server/auth";
 import { checkUploadToken, getRegistration, putRegFile, saveRegistration } from "@/lib/server/registrations";
 import { kvDel, newId } from "@/lib/server/store";
 import { checkAuthenticity } from "@/lib/server/authenticity";
+import { classifyCategory, standardFileName } from "@/lib/docClassify";
+import { extractText, getDocumentProxy } from "unpdf";
 import { DOC_CATEGORIES, MAX_REG_FILE, type RegDocument } from "@/lib/types";
 
 async function authorise(req: Request, id: string) {
@@ -52,17 +54,35 @@ export async function POST(req: Request, ctx: RouteContext<"/api/registrations/[
 
   if (!(file instanceof File) || file.size === 0) return Response.json({ error: "Choose a file" }, { status: 400 });
   if (file.size > MAX_REG_FILE) return Response.json({ error: `${file.name} is too large (max 4 MB per file).` }, { status: 413 });
-  const cat = String(form.get("category") ?? "Other");
+  // identify the document automatically when asked ("Auto") or when no category was given
+  const requested = String(form.get("category") ?? "Auto");
+  let category = DOC_CATEGORIES.includes(requested) ? requested : "";
+  let autoDetected = false;
+  if (!category) {
+    let text = "";
+    if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
+      try {
+        const pdf = await getDocumentProxy(new Uint8Array(await file.arrayBuffer()));
+        text = (await extractText(pdf, { mergePages: true })).text;
+      } catch {}
+    }
+    category = classifyCategory(file.name, text);
+    autoDetected = true;
+  }
+  // save as "<customer name> - <document type>.ext"
+  const sameCat = reg.documents.filter((d) => d.category === category && d.type !== "manual").length;
   const doc: RegDocument = {
     id: newId(),
-    category: DOC_CATEGORIES.includes(cat) ? cat : "Other",
-    name: file.name,
+    category,
+    name: standardFileName(reg.details.fullName, category, file.name, sameCat),
+    originalName: file.name,
+    autoDetected,
     type: file.type || "application/octet-stream",
     size: file.size,
     uploadedAt: new Date().toISOString(),
     by,
   };
-  await putRegFile(id, doc.id, file);
+  await putRegFile(id, doc.id, file, doc.name);
   // automatic authenticity check on every upload (a person can override it later)
   try {
     const r = await checkAuthenticity(new Uint8Array(await file.arrayBuffer()), file.name, doc.type, doc.category);
