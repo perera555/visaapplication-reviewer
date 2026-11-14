@@ -470,7 +470,7 @@ export function buildWorkLetter(i: SopInput): string {
     addressBlock(name, i.homeCity),
     "[Date]",
     `The Visa Officer\n${embassy}\n${embassyAddr}`,
-    `Subject: Work visa application: ${role}, ${employer}${i.destAddress ? `, ${i.destAddress}` : ""}, ${country}${i.nationality ? `\nApplicant: ${name}, ${i.nationality} national` : ""}`,
+    `Subject: Work visa application: ${role}, ${employer}${i.destAddress ? `, ${i.destAddress}` : ""}, ${country}${i.nationality ? `\nApplicant: ${name}, citizen of ${i.nationality}` : ""}`,
     `Dear Visa Officer,`,
     `I am applying for a work visa to take up the position of ${role} with ${employer} in ${country}${i.destStart ? `, starting ${i.destStart}` : ""}. ${para(i.destContract && `The contract is ${/permanent/i.test(i.destContract) ? "permanent" : `for ${i.destContract.toLowerCase()}`}`, i.destSalary && `with a salary of ${i.destSalary}`)}${i.destContract || i.destSalary ? "." : ""}${i.sponsorRef ? ` My sponsorship / permit reference is ${i.sponsorRef}.` : ""}`,
     `My experience\n${work || "[Add your jobs in the “Work experience” list]"}`,
