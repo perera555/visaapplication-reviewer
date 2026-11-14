@@ -212,11 +212,8 @@ ${text}`, { title: cform.title }), `${cform.title.replace(/[^A-Za-z0-9]+/g, "-")
                     <Field label={f.label}>
                       {f.type === "textarea" ? (
                         <textarea className="input min-h-20" value={values[f.key] ?? ""} onChange={(e) => update(f.key, e.target.value)} />
-                      ) : f.type === "select" ? (
-                        <select className="input" value={values[f.key] ?? ""} onChange={(e) => update(f.key, e.target.value)}>
-                          <option value="">Select…</option>
-                          {f.options!.map((o) => <option key={o}>{o}</option>)}
-                        </select>
+                      ) : f.type === "select" || f.type === "country" ? (
+                        <ListField value={values[f.key] ?? ""} options={f.type === "country" ? COUNTRIES.map((c) => c.name) : f.options ?? []} onChange={(v) => update(f.key, v)} />
                       ) : (
                         <input className="input" type={f.type ?? "text"} value={values[f.key] ?? ""} onChange={(e) => update(f.key, e.target.value)} />
                       )}
@@ -361,5 +358,20 @@ function PdfFiller({ values }: { values: Record<string, string> }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Dropdown with an "Other (type it)" option so any answer can still be entered. */
+function ListField({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) {
+  const custom = Boolean(value) && !options.includes(value);
+  return (
+    <>
+      <select className="input" value={custom ? "__other" : value} onChange={(e) => onChange(e.target.value === "__other" ? " " : e.target.value)}>
+        <option value="">Select…</option>
+        {options.map((o) => <option key={o}>{o}</option>)}
+        <option value="__other">Other (type it)…</option>
+      </select>
+      {custom && <input className="input mt-2" placeholder="Type your answer" value={value.trim()} onChange={(e) => onChange(e.target.value || " ")} />}
+    </>
   );
 }

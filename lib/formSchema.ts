@@ -1,7 +1,7 @@
 export type FormField = {
   key: string;
   label: string;
-  type?: "text" | "date" | "email" | "tel" | "number" | "textarea" | "select";
+  type?: "text" | "date" | "email" | "tel" | "number" | "textarea" | "select" | "country";
   options?: string[];
   aliases?: string[]; // used to auto-fill official PDF forms
   wide?: boolean;
@@ -19,9 +19,9 @@ export const FORM_SECTIONS: FormSection[] = [
       { key: "sex", label: "Sex", type: "select", options: ["Male", "Female", "Other"], aliases: ["sex", "gender"] },
       { key: "dob", label: "Date of birth", type: "date", aliases: ["dateofbirth", "dob", "birthdate"] },
       { key: "placeOfBirth", label: "Place of birth (city)", aliases: ["placeofbirth", "cityofbirth", "birthplace"] },
-      { key: "countryOfBirth", label: "Country of birth", aliases: ["countryofbirth"] },
-      { key: "nationality", label: "Current nationality", aliases: ["nationality", "citizenship", "currentnationality"] },
-      { key: "otherNationality", label: "Other nationalities", aliases: ["othernationality", "nationalityatbirth"] },
+      { key: "countryOfBirth", label: "Country of birth", type: "country", aliases: ["countryofbirth"] },
+      { key: "nationality", label: "Current nationality", type: "country", aliases: ["nationality", "citizenship", "currentnationality"] },
+      { key: "otherNationality", label: "Other nationality (if any)", type: "country", aliases: ["othernationality", "nationalityatbirth"] },
       { key: "maritalStatus", label: "Marital status", type: "select", options: ["Single", "Married", "Divorced", "Widowed", "Separated", "Civil partnership"], aliases: ["maritalstatus", "civilstatus"] },
       { key: "nationalId", label: "National ID number", aliases: ["nationalid", "idnumber", "nic", "nationalidentitynumber"] },
     ],
@@ -34,7 +34,7 @@ export const FORM_SECTIONS: FormSection[] = [
       { key: "passportIssue", label: "Date of issue", type: "date", aliases: ["dateofissue", "issuedate", "passportissuedate"] },
       { key: "passportExpiry", label: "Expiry date", type: "date", aliases: ["expirydate", "dateofexpiry", "validuntil", "passportexpirydate"] },
       { key: "passportPlace", label: "Place of issue", aliases: ["placeofissue", "issuingplace"] },
-      { key: "passportAuthority", label: "Issuing authority / country", aliases: ["issuingauthority", "issuedby", "issuingcountry"] },
+      { key: "passportAuthority", label: "Issuing country", type: "country", aliases: ["issuingauthority", "issuedby", "issuingcountry"] },
     ],
   },
   {
@@ -43,7 +43,7 @@ export const FORM_SECTIONS: FormSection[] = [
       { key: "address", label: "Home address", type: "textarea", wide: true, aliases: ["address", "homeaddress", "residentialaddress", "streetaddress"] },
       { key: "city", label: "City", aliases: ["city", "town"] },
       { key: "postcode", label: "Postal code", aliases: ["postcode", "postalcode", "zip", "zipcode"] },
-      { key: "country", label: "Country of residence", aliases: ["countryofresidence", "country"] },
+      { key: "country", label: "Country of residence", type: "country", aliases: ["countryofresidence", "country"] },
       { key: "phone", label: "Phone", type: "tel", aliases: ["phone", "telephone", "mobile", "phonenumber", "telephonenumber"] },
       { key: "email", label: "Email", type: "email", aliases: ["email", "emailaddress"] },
     ],
@@ -51,20 +51,20 @@ export const FORM_SECTIONS: FormSection[] = [
   {
     id: "travel", title: "Travel plans", icon: "✈️",
     fields: [
-      { key: "destination", label: "Destination country", aliases: ["destination", "countryofdestination", "mainDestination"] },
-      { key: "visaType", label: "Visa type requested", aliases: ["visatype", "typeofvisa", "visacategory"] },
+      { key: "destination", label: "Destination country", type: "country", aliases: ["destination", "countryofdestination", "mainDestination"] },
+      { key: "visaType", label: "Visa type requested", type: "select", options: ["Visit / Tourist", "Student", "Work / Skilled", "Business", "Family / Spouse", "Transit", "Medical", "Working Holiday", "Permanent Residence / Migration"], aliases: ["visatype", "typeofvisa", "visacategory"] },
       { key: "purpose", label: "Main purpose of journey", type: "textarea", wide: true, aliases: ["purpose", "purposeofjourney", "purposeoftravel", "purposeofvisit"] },
       { key: "arrival", label: "Intended arrival date", type: "date", aliases: ["arrivaldate", "intendeddateofarrival", "dateofarrival"] },
       { key: "departure", label: "Intended departure date", type: "date", aliases: ["departuredate", "intendeddateofdeparture", "dateofdeparture"] },
       { key: "stayAddress", label: "Address during stay / host", type: "textarea", wide: true, aliases: ["addressduringstay", "hostaddress", "hotel", "accommodationaddress"] },
-      { key: "payer", label: "Who pays for the trip", aliases: ["costcoveredby", "whopays", "sponsor", "payer"] },
-      { key: "companions", label: "Travel companions", aliases: ["companions", "travellingwith"] },
+      { key: "payer", label: "Who pays for the trip", type: "select", options: ["Myself", "My parents", "My spouse", "My employer", "Host / inviting person", "Sponsor (relative)", "Scholarship / university", "Company in destination country"], aliases: ["costcoveredby", "whopays", "sponsor", "payer"] },
+      { key: "companions", label: "Travel companions", type: "select", options: ["Travelling alone", "Spouse", "Spouse and children", "Children", "Parents", "Friends", "Colleagues", "Tour group"], aliases: ["companions", "travellingwith"] },
     ],
   },
   {
     id: "work", title: "Employment / study", icon: "💼",
     fields: [
-      { key: "occupation", label: "Current occupation", aliases: ["occupation", "currentoccupation", "profession", "jobtitle"] },
+      { key: "occupation", label: "Current occupation", type: "select", options: ["Employed (private sector)", "Employed (government)", "Self-employed / business owner", "Student", "Unemployed", "Retired", "Homemaker", "Freelancer / consultant"], aliases: ["occupation", "currentoccupation", "profession", "jobtitle"] },
       { key: "employer", label: "Employer / school name", aliases: ["employer", "employername", "nameofemployer", "school", "institution"] },
       { key: "employerAddress", label: "Employer / school address", type: "textarea", wide: true, aliases: ["employeraddress", "addressofemployer"] },
       { key: "employerPhone", label: "Employer phone", type: "tel", aliases: ["employerphone", "employertelephone"] },

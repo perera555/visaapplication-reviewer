@@ -9,7 +9,8 @@ export async function POST(req: Request) {
   const t = (text ?? "").slice(0, 30000);
   const base = reviewDocument(t, context ?? {});
   if (useAi && aiConfigured && t.trim().length >= 40) {
-    const ai = await aiReviewDocument(t, { ...context });
+    const { knownInstitutions, ...rest } = context ?? {};
+    const ai = await aiReviewDocument(t, { ...rest, knownInstitutions: knownInstitutions?.join("; ") });
     if (ai) {
       const issues = [...ai.issues, ...base.issues.filter((b) => !ai.issues.some((a) => a.found && b.found && a.found.toLowerCase() === b.found.toLowerCase()))];
       const errors = issues.filter((i) => i.severity === "error").length;

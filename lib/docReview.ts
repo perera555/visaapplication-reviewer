@@ -8,6 +8,8 @@ export type ReviewContext = {
   visaType?: string; // visit | student | work ...
   passportNo?: string;
   docName?: string;
+  university?: string; // target university (detect SOPs copied from another application)
+  knownInstitutions?: string[]; // the applicant's own past schools/universities (not flagged)
 };
 
 export type ReviewIssue = {
@@ -38,6 +40,7 @@ const SPELLING: Record<string, string> = {
   applicaton: "application", refered: "referred", sponser: "sponsor", employeer: "employer", salery: "salary",
   intrested: "interested", oppurtunity: "opportunity", immediatly: "immediately", wich: "which", thier: "their",
   hense: "hence", reciept: "receipt", greatful: "grateful", truely: "truly", passprot: "passport",
+  collage: "college", colleage: "college", proffesional: "professional", acheive: "achieve", acheivement: "achievement", sucessful: "successful", sucessfully: "successfully",
 };
 
 const INFORMAL: Record<string, string> = {
@@ -141,6 +144,24 @@ export function reviewDocument(rawText: string, ctx: ReviewContext = {}): DocRev
       }
     } else if (isLetter && !lower.includes(dest)) {
       issues.push({ severity: "warning", problem: "Destination country not mentioned", replaceWith: ctx.destination, suggestion: `State clearly that you are applying to travel to ${ctx.destination}.` });
+    }
+  }
+
+  // 5b. another university mentioned (SOP copied from a different application)
+  if (ctx.university?.trim()) {
+    const target = ctx.university.toLowerCase();
+    const initials = ctx.university.split(/\s+/).filter((w) => /^[A-Z]/.test(w) && !/^(of|the|and)$/i.test(w)).map((w) => w[0]).join("").toUpperCase();
+    const known = ["UTAS", "RMIT", "UNSW", "UWA", "QUT", "UTS", "ANU", "ECU", "CQU", "JCU", "ACU", "UQ", "UCL", "LSE", "KCL", "MIT", "UBC", "UCD", "UOW", "CDU", "SCU", "USQ", "UniSA"];
+    const others = new Set<string>();
+    for (const m of text.matchAll(/\b(University of [A-Z][a-zA-Z]+(?: [A-Z][a-zA-Z]+)?|[A-Z][a-zA-Z]+ (?:[A-Z][a-zA-Z]+ )?University)\b/g)) {
+      const n = m[1];
+      const own = (ctx.knownInstitutions ?? []).some((k) => k && (k.toLowerCase().includes(n.toLowerCase()) || n.toLowerCase().includes(k.toLowerCase())));
+      if (!own && !target.includes(n.toLowerCase()) && !n.toLowerCase().includes(target)) others.add(n);
+    }
+    for (const k of known) if (new RegExp(`\\b${k}\\b`).test(text) && k.toUpperCase() !== initials) others.add(k);
+    for (const o of [...others].slice(0, 4)) {
+      issues.push({ severity: "error", problem: "Another university is mentioned (looks copied from a different SOP)", found: o, replaceWith: ctx.university, suggestion: `The statement is for ${ctx.university}, but mentions “${o}”. Officers treat this as a sign of a copied, non-genuine statement.` });
+      corrected = replaceWord(corrected, o, ctx.university);
     }
   }
 

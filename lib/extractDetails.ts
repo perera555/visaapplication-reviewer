@@ -10,7 +10,7 @@ export const DETAIL_LABELS: Record<string, string> = {
   email: "Email", phone: "Phone", address: "Address", employer: "Employer", occupation: "Job title",
   income: "Monthly salary", bankBalance: "Bank balance", accountHolder: "Account holder",
   englishTest: "English test", englishScore: "English score", institution: "University / college",
-  course: "Course", courseStart: "Course start date", maritalStatus: "Marital status",
+  course: "Course", courseStart: "Course start date", duration: "Course duration", institutionAddress: "University address", maritalStatus: "Marital status",
 };
 
 const MONTHS: Record<string, string> = { jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06", jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12" };
@@ -110,8 +110,19 @@ export function extractDetails(text: string, source: string): Detail[] {
 
   // ---- study ----
   put("institution", grab(t, /\b([A-Z][A-Za-z.&' ]{2,60}(?:University|College|Institute|School|Academy))\b/));
+  put("course", grab(t, /\b((?:Master|Bachelor|Doctor|Graduate Certificate|Graduate Diploma|Advanced Diploma|Diploma) (?:of|in) [A-Z][A-Za-z&() ]{2,60}?)(?=\s{2,}|\n|\s+Campus|\s+CRICOS|\s+\d|$)/m));
+  const dur = t.match(/\b(\d{1,2})\s*Year\(?s?\)?/) ?? t.match(/\bduration\s*[:\-]?\s*(\d{1,2})\s*years?/i);
+  if (dur) put("duration", `${dur[1]} year${dur[1] === "1" ? "" : "s"}`);
   put("course", grab(t, /\b(?:course(?: title| name)?|programme|program)\s*[:\-]?\s*([A-Z][A-Za-z()&,' -]{4,80})/i));
-  put("courseStart", grab(t, new RegExp(`\\b(?:course start date|start date|commencement date|commencing)\\s*[:\\-]?\\s*${DATE}`, "i")));
+  // university / campus address (Australia, UK, generic "number + street, city, state + postcode")
+  {
+    const flat = t.replace(/\s+/g, " ");
+    const au = flat.match(/((?:[A-Z][a-z]+ )?Campus )?(\d{1,5}[A-Za-z]? [A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+)* (?:Drive|Road|Street|St|Avenue|Ave|Lane|Way|Place|Terrace|Boulevard|Parade|Highway|Circuit|Crescent)(?:,? [A-Z][A-Za-z]+){0,2},? (?:Western Australia|New South Wales|Victoria|Queensland|South Australia|Tasmania|Northern Territory|Australian Capital Territory|WA|NSW|VIC|QLD|SA|TAS|NT|ACT) \d{4})/);
+    const uk = flat.match(/(\d{1,5}[A-Za-z]? [A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+)* (?:Road|Street|Lane|Avenue|Way|Place|Square|Drive|Hill|Park)(?:,? [A-Z][A-Za-z]+){0,3},? [A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2})\b/);
+    const addr = au ? `${au[1] ? au[1].trim() + ", " : ""}${au[2]}` : uk?.[1];
+    if (addr) put("institutionAddress", addr.replace(/ (Western Australia|New South Wales|Victoria|Queensland|South Australia|Tasmania)/, ", $1"));
+  }
+  put("courseStart", grab(t, new RegExp(`\\b(?:course start date|course start|start date|commencement date|commencing)\\s*[:\\-]?\\s*${DATE}`, "i")));
 
   // normalise dates
   for (const k of ["dob", "passportIssue", "passportExpiry", "courseStart"]) {
