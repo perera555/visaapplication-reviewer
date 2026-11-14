@@ -62,6 +62,7 @@ export type SopInput = {
   /** what the applicant did after school, before higher studies (coaching, first job, delays) */
   afterSchool: string;
   campus: string; cricos: string; scholarship: string; uniFacts: string;
+  embassyName: string; embassyAddress: string;
   targetCompanies: string[]; nicheCompanies: string[];
   salaryCurrency: string; salaryPeriod: string; salaryLocal: string; salaryOverseasMin: string; salaryOverseasMax: string; salarySource: string;
   salaryMid: string; salarySenior: string; marketNotes: string;
@@ -85,7 +86,7 @@ export const EMPTY_SOP: SopInput = {
   destEmployer: "", destRole: "", destSalary: "", destStart: "", destContract: "", sponsorRef: "", whyEmployer: "", destAddress: "",
   education: [], jobs: [], travelHistory: "",
   fullName: "", nationality: "Sri Lanka", homeCity: "", age: "", country: "", countryCode: "",
-  level: "", course: "", university: "", universityAddress: "", intake: "", duration: "", finalProject: "", city: "", afterSchool: "", campus: "", cricos: "", scholarship: "", uniFacts: "",
+  level: "", course: "", university: "", universityAddress: "", intake: "", duration: "", finalProject: "", city: "", afterSchool: "", campus: "", cricos: "", scholarship: "", uniFacts: "", embassyName: "", embassyAddress: "",
   targetCompanies: [], nicheCompanies: [], salaryCurrency: "", salaryPeriod: "per month", salaryLocal: "", salaryOverseasMin: "", salaryOverseasMax: "", salarySource: "", salaryMid: "", salarySenior: "", marketNotes: "",
   prevDegree: "", prevInstitution: "", prevYear: "", prevResult: "", prevSubjects: "",
   englishTest: "", englishScore: "", workExperience: "",
@@ -124,7 +125,7 @@ type FieldType = "text" | "textarea" | "select" | "country";
 type FieldDef = [keyof SopInput, string, FieldType, string[]?];
 type Section = { section: string; fields: FieldDef[] };
 
-const ABOUT: Section = { section: "About you", fields: [["fullName", "Full name (as in passport)", "text"], ["nationality", "Home country (where you will return)", "country"], ["homeCity", "Home city / country", "text"], ["age", "Age", "text"]] };
+const ABOUT: Section = { section: "About you", fields: [["fullName", "Full name (as in passport)", "text"], ["nationality", "Home country (where you will return)", "country"], ["homeCity", "Your home address (house number and street, city, country)", "text"], ["age", "Age", "text"]] };
 const OTHER: Section = { section: "Other (optional)", fields: [["gaps", "Explain any study / work gaps", "textarea"], ["refusals", "Previous visa refusals and what changed", "textarea"], ["achievements", "Achievements, awards, volunteering", "textarea"], ["extra", "Anything else", "textarea"]] };
 
 /** Fields for students (SOP / Genuine Student / study plan). Education & jobs are edited as lists. */
@@ -141,6 +142,7 @@ export const SOP_FIELDS: Section[] = [
 /** Fields for workers (work visa cover letter / letter of explanation). */
 export const WORK_FIELDS: Section[] = [
   ABOUT,
+  { section: "Embassy / visa office", fields: [["embassyName", "Send to (e.g. British High Commission, Colombo / VFS Global)", "text"], ["embassyAddress", "Embassy / visa office address", "text"]] },
   { section: "Job offer in the destination country", fields: [["destRole", "Job title", "text"], ["destEmployer", "Employer (company name)", "text"], ["destAddress", "Workplace address / city", "text"], ["destStart", "Start date", "text"], ["destContract", "Contract length", "select", ["Permanent", "1 year", "2 years", "3 years", "4 years", "5 years", "Seasonal / temporary"]], ["destSalary", "Salary offered (e.g. GBP 38,700 per year)", "text"], ["sponsorRef", "Sponsorship / permit reference (CoS, LMIA, nomination, work permit no.)", "text"], ["whyEmployer", "Why this job matches your skills and experience", "textarea"]] },
   { section: "English", fields: [["englishTest", "English test (or exemption)", "select", ENGLISH_TEST_OPTIONS], ["englishScore", "Score", "text"]] },
   { section: "Ties & plans", fields: [["familyTies", "Family (travelling with you or at home)", "textarea"], ["assets", "Property / business at home", "textarea"], ["shortGoal", "Your plans (e.g. return after contract, career growth)", "textarea"]] },
@@ -447,19 +449,28 @@ export function buildSop(input: SopInput): string {
 }
 
 /** Work visa cover letter / letter of explanation: short, factual, lists the job and enclosed documents. */
+/** Full name, then each part of the address on its own line. */
+function addressBlock(name: string, address: string) {
+  const parts = (address.trim() ? address : "[House number and street], [City], [Country]").split(",").map((x) => x.trim()).filter(Boolean);
+  return [name, ...parts.map((x, k) => (k < parts.length - 1 ? `${x},` : x))].join("\n");
+}
+
 export function buildWorkLetter(i: SopInput): string {
   const name = v(i.fullName, "Your full name");
-  const country = v(i.country, "destination country");
+  const country = /^(United|Netherlands|Philippines|Czech|Maldives|Bahamas|Gambia)/.test(i.country) ? `the ${i.country}` : v(i.country, "destination country");
   const role = v(i.destRole, "job title");
   const employer = v(i.destEmployer, "employer");
   const work = workText(i);
   const education = educationText(i);
   const english = englishText(i);
   const travel = travelText(i);
+  const embassy = i.embassyName.trim() || `[Embassy / High Commission of ${country.replace(/^the /, "the ")}]`;
+  const embassyAddr = i.embassyAddress.trim() ? i.embassyAddress.split(",").map((x) => x.trim()).filter(Boolean).join(",\n") : "[Embassy address]";
   return [
-    `COVER LETTER: WORK VISA APPLICATION`,
-    `Applicant: ${name}${i.nationality ? `, ${i.nationality} national` : ""}`,
-    `Position: ${role}, ${employer}${i.destAddress ? `, ${i.destAddress}` : ""}, ${country}`,
+    addressBlock(name, i.homeCity),
+    "[Date]",
+    `The Visa Officer\n${embassy}\n${embassyAddr}`,
+    `Subject: Work visa application: ${role}, ${employer}${i.destAddress ? `, ${i.destAddress}` : ""}, ${country}${i.nationality ? `\nApplicant: ${name}, ${i.nationality} national` : ""}`,
     `Dear Visa Officer,`,
     `I am applying for a work visa to take up the position of ${role} with ${employer} in ${country}${i.destStart ? `, starting ${i.destStart}` : ""}. ${para(i.destContract && `The contract is ${/permanent/i.test(i.destContract) ? "permanent" : `for ${i.destContract.toLowerCase()}`}`, i.destSalary && `with a salary of ${i.destSalary}`)}${i.destContract || i.destSalary ? "." : ""}${i.sponsorRef ? ` My sponsorship / permit reference is ${i.sponsorRef}.` : ""}`,
     `My experience\n${work || "[Add your jobs in the “Work experience” list]"}`,
