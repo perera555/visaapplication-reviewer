@@ -531,3 +531,34 @@ export function suggestSubjects(i: SopInput): { field: string; subjects: string[
   const hay = `${last} ${i.course}`;
   return SUBJECTS_BY_FIELD.find((x) => x.match.test(last)) ?? SUBJECTS_BY_FIELD.find((x) => x.match.test(hay)) ?? null;
 }
+
+/** "How to fill it" examples shown under each field (from the model SOP, with personal details changed). */
+export const FIELD_EXAMPLES: Partial<Record<keyof SopInput, string>> = {
+  fullName: "Nimal Thushara Perera (exactly as in your passport)",
+  nationality: "Sri Lanka",
+  homeCity: "No. 12/B, Temple Road, Maharagama, Sri Lanka",
+  age: "33",
+  course: "Computer Science",
+  university: "Edith Cowan University",
+  universityAddress: "Joondalup Campus, 270 Joondalup Drive, Joondalup, Western Australia 6027",
+  city: "Perth",
+  modules: "Emerging Technologies and Innovation (compulsory), Android App Development, Systems Analysis, Object Modelling",
+  prevSubjects: "software development, databases, networking and systems analysis",
+  finalProject: "A mobile app for managing school sports teams",
+  englishScore: "7.0 (or leave empty for a waiver)",
+  whyCourse: "It is the natural next step after my BSc (Hons) Computing and builds on ten years of working with computerised banking systems…",
+  whyUniversity: "Its Master of Computer Science offers a specialisation in software and hardware design, its graduates rate its teaching highly, and I have been offered a 20% scholarship…",
+  whyCountry: "Australian qualifications are recognised worldwide and valued by IT employers at home; friends and relatives who studied there returned to good careers…",
+  whyNotHome: "This specialisation is not offered locally, local courses take longer and are often taught in mixed medium…",
+  shortGoal: "Return to my employer in a more senior IT role, or join a leading software company at home…",
+  longGoal: "Grow my freelance IT consultancy into my own IT company with capable partners…",
+  jobProspects: "Leading IT companies at home recruit postgraduates with up-to-date skills for senior roles",
+  fundsAmount: "LKR 12,000,000",
+  familyTies: "My father is a retired bank officer and my mother runs a registered garment business with ten workers. We are three children.",
+  assets: "my position at the bank and my family's home",
+  gaps: "From 2015 to 2017 I worked full time at the bank and as a freelance IT consultant, while coaching school cricket part time. My employment letters confirm this.",
+  refusals: "In 2022 my UK visitor visa was refused because my funds were unclear. I now provide 6 months of statements and the source of the money.",
+  achievements: "I represented my school in cricket (First XI) and rugby (First XV) and was a member of the debating team.",
+  extra: "Anything else the officer should know",
+  afterSchool: "After school I coached junior cricket and rugby at my college and worked in sales of sports equipment, which delayed my higher studies.",
+};

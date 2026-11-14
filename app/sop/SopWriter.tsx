@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { COUNTRIES, flag } from "@/lib/countries";
-import { suggestSubjects } from "@/lib/sop";
+import { FIELD_EXAMPLES, suggestSubjects } from "@/lib/sop";
 import { currencyOf, suggestCompanies } from "@/lib/sopCareer";
 import { reasonOptions } from "@/lib/sopAuto";
 import { EXAMPLE_SOP, EMPTY_FAMILY, FAMILY_OPTIONS, REASON_OPTIONS, REFUSAL_CHANGES, REFUSAL_REASONS, TRIP_PURPOSES, composeField, type Family, type RefusalEntry, type TripEntry } from "@/lib/sop";
@@ -263,7 +263,7 @@ export function SopWriter() {
                   const custom = isList && val && !opts.includes(val);
                   return (
                     <div key={k} className={type === "textarea" ? "sm:col-span-2" : ""}>
-                      <Field label={`${label}${filled[k] ? " ✨" : ""}`} hint={filled[k] ? `from your ${filled[k]}` : undefined}>
+                      <Field label={`${label}${filled[k] ? " ✨" : ""}`} hint={filled[k] ? `from your ${filled[k]}` : FIELD_EXAMPLES[k] && !val.trim() ? `💡 Example: ${FIELD_EXAMPLES[k]}` : undefined}>
                         {k === "prevSubjects" && (() => {
                           const sug = suggestSubjects(s);
                           if (!sug) return <p className="mb-2 text-xs text-slate-500">Add your last qualification above to get subject suggestions, or type your subjects.</p>;
@@ -306,7 +306,7 @@ export function SopWriter() {
                           <button type="button" className="mb-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700" onClick={() => set(k, composeField(k, s))}>✨ Write it for me</button>
                         )}
                         {type === "textarea" ? (
-                          <textarea className="input min-h-20" value={val} placeholder={REASON_OPTIONS[k] ? "Tick reasons above and press “Write it for me”, or type your own" : undefined} onChange={(e) => set(k, e.target.value)} />
+                          <textarea className="input min-h-20" value={val} placeholder={REASON_OPTIONS[k] ? "Tick reasons above and press “Write it for me”, or type your own" : FIELD_EXAMPLES[k] ? `e.g. ${FIELD_EXAMPLES[k]}` : undefined} onChange={(e) => set(k, e.target.value)} />
                         ) : isList ? (
                           <select className={`input ${filled[k] ? "border-emerald-300 bg-emerald-50/40" : ""}`} value={custom ? "__other" : val} onChange={(e) => set(k, e.target.value === "__other" ? " " : e.target.value)}>
                             <option value="">Select…</option>
@@ -314,7 +314,7 @@ export function SopWriter() {
                             <option value="__other">Other (type it)…</option>
                           </select>
                         ) : (
-                          <input className={`input ${filled[k] ? "border-emerald-300 bg-emerald-50/40" : ""}`} value={val} onChange={(e) => set(k, e.target.value)} />
+                          <input className={`input ${filled[k] ? "border-emerald-300 bg-emerald-50/40" : ""}`} value={val} placeholder={FIELD_EXAMPLES[k] ? `e.g. ${FIELD_EXAMPLES[k]}` : undefined} onChange={(e) => set(k, e.target.value)} />
                         )}
                         {custom && <input className="input mt-2" placeholder="Type your answer" value={val.trim()} onChange={(e) => set(k, e.target.value || " ")} />}
                       </Field>
