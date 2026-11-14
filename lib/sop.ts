@@ -19,7 +19,23 @@ export const FAMILY_OPTIONS = {
   livesWith: ["my parents", "my spouse", "my spouse and children", "my parents, spouse and children", "on my own"],
 };
 
+export type RefusalEntry = { country: string; year: string; visaType: string; reason: string; changes: string[] };
+
+/** Quick-pick reasons the applicant ticks; "Write it for me" turns them into a paragraph. */
+export const REASON_OPTIONS: Partial<Record<keyof SopInput, string[]>> = {
+  whyCourse: ["it builds on my previous degree", "it builds on my work experience", "it fills the skill gaps I need for my career", "it is needed for promotion in my current field", "it is an industry-recognised qualification", "I want to specialise further in this area", "I am moving my career into this field"],
+  whyUniversity: ["the course modules match my career goals", "strong industry links, placements and projects", "experienced, research-active teaching staff", "modern facilities, labs and learning resources", "high graduate satisfaction and teaching ratings", "I have been offered a scholarship", "the course is accredited by a professional body", "good support services for international students"],
+  whyCountry: ["its qualifications are recognised worldwide", "it has a high-quality, well-regulated education system", "its qualifications are valued by employers in my home country", "teaching is practical and industry-focused", "it is safe and multicultural", "friends and relatives studied there and returned to good careers", "the total cost is reasonable compared with other study destinations"],
+  whyNotHome: ["this course is not available in my home country", "this specialisation is not offered locally", "local programmes take longer to complete", "places are very limited and competitive locally", "local programmes lack international recognition", "local facilities and curriculum are less up to date"],
+  shortGoal: ["return to my current employer in a more senior role", "join a leading company in my field at home", "work in the public sector in my field", "join and grow my family business", "start my own business in this field", "work as a specialist / consultant in my field"],
+  longGoal: ["become a senior manager or specialist in my field", "start and grow my own company", "lead major projects in my industry", "train and mentor others in my field", "contribute to my country's development in this field", "move into research or teaching"],
+};
+export const REFUSAL_REASONS = ["insufficient or unclear funds", "weak ties to my home country", "the purpose of my visit was not clear", "doubts that I was a genuine student", "missing or unclear documents", "the English requirement was not met", "my previous immigration history", "another reason"];
+export const REFUSAL_CHANGES = ["I now have stronger financial evidence held for the required period", "I have a new employment / promotion letter showing my ties", "I have a clear study plan and a course that matches my background", "I have submitted every required document", "I have a new English test result", "I have explained my study and work gaps with evidence", "I have stronger evidence of family and property ties"];
+
 export type SopInput = {
+  picks: Partial<Record<string, string[]>>;
+  refusalList: RefusalEntry[];
   /** write empty "why" and career sections automatically from the other details */
   autoWrite: boolean;
   trips: TripEntry[];
@@ -51,6 +67,7 @@ export type SopInput = {
 export const EMPTY_SOP: SopInput = {
   applicantType: "student",
   style: "auto",
+  picks: {}, refusalList: [],
   autoWrite: true, trips: [], travelNone: false, family: { father: "", mother: "", brothers: "", sisters: "", position: "", marital: "", children: "", spouseJob: "", relativesAbroad: "", livesWith: "" },
   destEmployer: "", destRole: "", destSalary: "", destStart: "", destContract: "", sponsorRef: "", whyEmployer: "", destAddress: "",
   education: [], jobs: [], travelHistory: "",
@@ -208,6 +225,56 @@ function familyText(i: SopInput) {
   return parts.join(" ");
 }
 
+const joinList = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs[0] ?? "");
+
+/** Text for one field from the ticked reasons (falls back to good default wording). */
+export function composeField(key: keyof SopInput, i: SopInput): string {
+  const picks = (i.picks?.[key] ?? []).filter(Boolean);
+  const a = auto(i);
+  const home = homeCountryOf(i);
+  const country = i.country || "the destination country";
+  const course = `${i.level} ${i.course}`.replace(/\s+/g, " ").trim() || "this course";
+  const uni = i.university || "this university";
+  const lastEdu = [...(i.education ?? [])].filter((e) => e.qualification).pop();
+  const lastJob = [...(i.jobs ?? [])].filter((j) => j.role).sort((x, y) => (x.current ? 1 : 0) - (y.current ? 1 : 0)).pop();
+  const swap = (p: string) =>
+    p.replace("my previous degree", lastEdu ? lastEdu.qualification.replace(/^(?!my |a |the )/i, "my ") : "my previous degree")
+      .replace("my work experience", lastJob ? `my experience as ${lastJob.role}${lastJob.employer ? ` at ${lastJob.employer}` : ""}` : "my work experience")
+      .replace(/my home country/g, home);
+  switch (key) {
+    case "whyCourse": {
+      if (!picks.length) return a.whyCourse;
+      const items = picks.map(swap);
+      const builds = items.filter((p) => p.startsWith("it builds on ")).map((p) => p.replace("it builds on ", ""));
+      const rest = items.filter((p) => !p.startsWith("it builds on ")).map((p) => p.replace(/^it /, ""));
+      const parts = [builds.length ? `builds on ${joinList(builds)}` : "", ...rest.filter((p) => !/^I /.test(p))].filter(Boolean);
+      const mine = rest.filter((p) => /^I /.test(p));
+      return [parts.length ? `it ${joinList(parts)}` : "", ...mine.map((p) => p.replace(/^I /, "I "))].filter(Boolean).join(", and ");
+    }
+    case "whyUniversity":
+      return picks.length ? `${joinList(picks.map(swap))}` : a.whyUniversity;
+    case "whyCountry":
+      return picks.length ? `I chose ${country} because ${joinList(picks.map(swap))}.` : a.whyCountry;
+    case "whyNotHome":
+      return picks.length ? `I considered studying in ${home}, but ${joinList(picks.map(swap))}. Studying the ${course} at ${uni} gives me what I cannot get by studying locally.` : a.whyNotHome;
+    case "shortGoal":
+      return picks.length ? `${joinList(picks.map(swap))}, using the skills gained from the ${course}` : a.shortGoal;
+    case "longGoal":
+      return picks.length ? joinList(picks.map(swap)) : a.longGoal;
+    case "refusals":
+      return refusalText(i);
+    default:
+      return "";
+  }
+}
+
+function refusalText(i: SopInput) {
+  const list = (i.refusalList ?? []).filter((r) => r.country || r.reason);
+  return list
+    .map((r) => `In ${r.year || "[year]"}, my ${r.visaType ? ({ "Visit / Tourist": "visitor", Work: "work", Student: "student", Business: "business", Family: "family", Transit: "transit" } as Record<string, string>)[r.visaType] ?? r.visaType.toLowerCase() : ""}${r.visaType ? " " : ""}visa application to ${/^(United|Netherlands|Philippines|Czech|Maldives|Bahamas|Gambia)/.test(r.country) ? "the " : ""}${r.country || "[country]"} was refused because of ${r.reason || "[reason]"}.${r.changes.length ? ` Since then, ${joinList(r.changes.map((c) => c.replace(/^I /, "I ")))}.` : ""} I have declared this refusal and addressed it fully in this application.`)
+    .join(" ");
+}
+
 /** Good default wording built only from details already entered (used when "write automatically" is on). */
 function auto(i: SopInput) {
   const home = homeCountryOf(i);
@@ -244,8 +311,17 @@ export function buildSop(input: SopInput): string {
   if (input.applicantType === "worker") return buildWorkLetter(input);
   const a = input.autoWrite ? auto(input) : null;
   const i: SopInput = a
-    ? { ...input, whyCourse: input.whyCourse || a.whyCourse, whyUniversity: input.whyUniversity || a.whyUniversity, whyCountry: input.whyCountry || a.whyCountry, whyNotHome: input.whyNotHome || a.whyNotHome, shortGoal: input.shortGoal || a.shortGoal, longGoal: input.longGoal || a.longGoal }
-    : input;
+    ? {
+        ...input,
+        whyCourse: input.whyCourse || composeField("whyCourse", input),
+        whyUniversity: input.whyUniversity || composeField("whyUniversity", input),
+        whyCountry: input.whyCountry || composeField("whyCountry", input),
+        whyNotHome: input.whyNotHome || composeField("whyNotHome", input),
+        shortGoal: input.shortGoal || composeField("shortGoal", input),
+        longGoal: input.longGoal || composeField("longGoal", input),
+        refusals: input.refusals || refusalText(input),
+      }
+    : { ...input, refusals: input.refusals || refusalText(input) };
   const name = v(i.fullName, "Your full name");
   const course = `${v(i.level, "level")} ${v(i.course, "course name")}`.replace(/\s+/g, " ");
   const uni = v(i.university, "university");
@@ -270,7 +346,7 @@ export function buildSop(input: SopInput): string {
   const fam = familyText(i);
   const ties = para(fam, i.assets && `I also have ${i.assets}, which I will return to.`, "I fully intend to comply with all visa conditions and return home after my studies.");
   const travel = travelText(i);
-  const other = para(gapText(i), i.refusals && `I would like to disclose a previous visa refusal: ${i.refusals}.`, i.achievements && `Outside my studies, ${i.achievements}.`, i.extra);
+  const other = para(gapText(i), i.refusals && (/^In /.test(i.refusals) ? i.refusals : `I would like to disclose a previous visa refusal: ${i.refusals}.`), i.achievements && `Outside my studies, ${i.achievements}.`, i.extra);
 
   const fmt = sopFormat(i.countryCode, i.style);
   if (fmt === "full") {
@@ -293,7 +369,7 @@ export function buildSop(input: SopInput): string {
       travel && `Travel History (Immigration History)\n${travel}`,
       (fam || i.assets) && `Family Background\n${para(fam, i.assets && `I also have ${i.assets}, which I will return to.`)}`,
       `Financial Support\n${money}`,
-      para(i.refusals && `I would like to disclose a previous visa refusal: ${i.refusals}.`, i.achievements && `Outside my studies, ${i.achievements}.`, i.extra) && `Additional information\n${para(i.refusals && `I would like to disclose a previous visa refusal: ${i.refusals}.`, i.achievements && `Outside my studies, ${i.achievements}.`, i.extra)}`,
+      para(i.refusals && (/^In /.test(i.refusals) ? i.refusals : `I would like to disclose a previous visa refusal: ${i.refusals}.`), i.achievements && `Outside my studies, ${i.achievements}.`, i.extra) && `Additional information\n${para(i.refusals && (/^In /.test(i.refusals) ? i.refusals : `I would like to disclose a previous visa refusal: ${i.refusals}.`), i.achievements && `Outside my studies, ${i.achievements}.`, i.extra)}`,
       `I fully intend to comply with all visa conditions and to return to ${homeCountry} on completion of my studies. I would be grateful if you would consider my application favourably.`,
       `Yours sincerely,\n\n\n${name}\n(Applicant)`,
     ].filter(Boolean).join("\n\n");
@@ -359,7 +435,7 @@ export function buildWorkLetter(i: SopInput): string {
     `My experience\n${work || "[Add your jobs in the “Work experience” list]"}`,
     `My qualifications\n${para(education, english)}`,
     `Why I am suited to this role\n${v(i.whyEmployer, "explain how your skills and experience match the job")}`,
-    para(familyText(i), i.assets && `At home I have ${i.assets}.`, i.shortGoal && `My plans: ${i.shortGoal}.`, travel, gapText(i), i.refusals && `I would like to disclose a previous visa refusal: ${i.refusals}.`, i.extra) || "",
+    para(familyText(i), i.assets && `At home I have ${i.assets}.`, i.shortGoal && `My plans: ${i.shortGoal}.`, travel, gapText(i), i.refusals && (/^In /.test(i.refusals) ? i.refusals : `I would like to disclose a previous visa refusal: ${i.refusals}.`), i.extra) || "",
     `I confirm that the information in this application is true, and I will comply with all the conditions of my visa.\n\nEnclosed: passport, signed employment contract / job offer, sponsorship or work permit document, qualification certificates, experience letters, English test result${i.travelHistory ? ", previous visas" : ""}.`,
     `Yours faithfully,\n\n\n${name}`,
   ].filter(Boolean).join("\n\n");

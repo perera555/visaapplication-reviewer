@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { COUNTRIES, flag } from "@/lib/countries";
-import { EMPTY_FAMILY, FAMILY_OPTIONS, TRIP_PURPOSES, type Family, type TripEntry } from "@/lib/sop";
+import { EMPTY_FAMILY, FAMILY_OPTIONS, REASON_OPTIONS, REFUSAL_CHANGES, REFUSAL_REASONS, TRIP_PURPOSES, composeField, type Family, type RefusalEntry, type TripEntry } from "@/lib/sop";
 import { EMPTY_EDU, EMPTY_JOB, EMPTY_SOP, QUALIFICATION_OPTIONS, SOP_FIELDS, WORK_FIELDS, buildSop, findGaps, sopFormat, wordCount, type EduEntry, type JobEntry, type SopInput } from "@/lib/sop";
 import { extractDetails } from "@/lib/extractDetails";
 import { analyzeCv } from "@/lib/cvAnalyzer";
@@ -209,8 +209,28 @@ export function SopWriter() {
                   return (
                     <div key={k} className={type === "textarea" ? "sm:col-span-2" : ""}>
                       <Field label={`${label}${filled[k] ? " ✨" : ""}`} hint={filled[k] ? `from your ${filled[k]}` : undefined}>
+                        {k === "refusals" && <RefusalEditor s={s} update={(p) => { setEdited(null); setS((x) => ({ ...x, ...p })); }} />}
+                        {REASON_OPTIONS[k] && (
+                          <div className="mb-2 rounded-xl border border-indigo-100 bg-indigo-50/40 p-2">
+                            <div className="text-[11px] font-semibold text-slate-500">Tick what applies to you:</div>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {REASON_OPTIONS[k]!.map((o) => {
+                                const on = (s.picks?.[k] ?? []).includes(o);
+                                return (
+                                  <button type="button" key={o} onClick={() => { setEdited(null); setS((x) => ({ ...x, picks: { ...x.picks, [k]: on ? (x.picks?.[k] ?? []).filter((y) => y !== o) : [...(x.picks?.[k] ?? []), o] } })); }}
+                                    className={`rounded-full border px-2.5 py-1 text-xs transition ${on ? "border-indigo-500 bg-indigo-600 text-white" : "border-line bg-white text-slate-700 hover:border-indigo-300"}`}>
+                                    {on ? "✓ " : ""}{o.charAt(0).toUpperCase() + o.slice(1)}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        {(REASON_OPTIONS[k] || k === "refusals") && (
+                          <button type="button" className="mb-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700" onClick={() => set(k, composeField(k, s))}>✨ Write it for me</button>
+                        )}
                         {type === "textarea" ? (
-                          <textarea className="input min-h-20" value={val} onChange={(e) => set(k, e.target.value)} />
+                          <textarea className="input min-h-20" value={val} placeholder={REASON_OPTIONS[k] ? "Tick reasons above and press “Write it for me”, or type your own" : undefined} onChange={(e) => set(k, e.target.value)} />
                         ) : isList ? (
                           <select className={`input ${filled[k] ? "border-emerald-300 bg-emerald-50/40" : ""}`} value={custom ? "__other" : val} onChange={(e) => set(k, e.target.value === "__other" ? " " : e.target.value)}>
                             <option value="">Select…</option>
@@ -386,5 +406,51 @@ function TravelFamily({ s, update }: { s: SopInput; update: (p: Partial<SopInput
         </div>
       </section>
     </>
+  );
+}
+
+/** Previous visa refusals: country, year, visa, reason and what has changed. */
+function RefusalEditor({ s, update }: { s: SopInput; update: (p: Partial<SopInput>) => void }) {
+  const list = s.refusalList ?? [];
+  const setR = (i: number, p: Partial<RefusalEntry>) => update({ refusalList: list.map((r, k) => (k === i ? { ...r, ...p } : r)) });
+  const years = Array.from({ length: 21 }, (_, k) => String(2026 - k));
+  return (
+    <div className="mb-2 space-y-2">
+      {list.map((r, i) => (
+        <div key={i} className="rounded-2xl border border-rose-200 bg-rose-50/40 p-3">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <select className="input" value={r.country} onChange={(e) => setR(i, { country: e.target.value })}>
+              <option value="">Country that refused…</option>
+              {COUNTRIES.map((c) => <option key={c.code} value={c.name}>{flag(c.code)} {c.name}</option>)}
+            </select>
+            <select className="input" value={r.year} onChange={(e) => setR(i, { year: e.target.value })}>
+              <option value="">Year…</option>
+              {years.map((y) => <option key={y}>{y}</option>)}
+            </select>
+            <select className="input" value={r.visaType} onChange={(e) => setR(i, { visaType: e.target.value })}>
+              <option value="">Visa type…</option>
+              {["Student", "Visit / Tourist", "Work", "Business", "Family", "Transit"].map((v) => <option key={v}>{v}</option>)}
+            </select>
+            <select className="input" value={r.reason} onChange={(e) => setR(i, { reason: e.target.value })}>
+              <option value="">Main refusal reason…</option>
+              {REFUSAL_REASONS.map((v) => <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</option>)}
+            </select>
+          </div>
+          <div className="mt-2 text-[11px] font-semibold text-slate-500">What has changed since:</div>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {REFUSAL_CHANGES.map((c) => {
+              const on = r.changes.includes(c);
+              return (
+                <button type="button" key={c} onClick={() => setR(i, { changes: on ? r.changes.filter((x) => x !== c) : [...r.changes, c] })} className={`rounded-full border px-2.5 py-1 text-xs ${on ? "border-emerald-500 bg-emerald-600 text-white" : "border-line bg-white text-slate-700"}`}>
+                  {on ? "✓ " : ""}{c}
+                </button>
+              );
+            })}
+          </div>
+          <button type="button" className="mt-2 text-xs text-rose-600" onClick={() => update({ refusalList: list.filter((_, k) => k !== i) })}>Remove</button>
+        </div>
+      ))}
+      <button type="button" className="btn-ghost w-full" onClick={() => update({ refusalList: [...list, { country: "", year: "", visaType: "", reason: "", changes: [] }] })}>+ Add a previous refusal</button>
+    </div>
   );
 }
