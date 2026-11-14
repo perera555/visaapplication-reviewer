@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { COUNTRIES, flag } from "@/lib/countries";
-import { EMPTY_SOP, SOP_FIELDS, buildSop, sopFormat, wordCount, type SopInput } from "@/lib/sop";
+import { ENGLISH_TEST_OPTIONS, EMPTY_SOP, SOP_FIELDS, buildSop, sopFormat, wordCount, type SopInput } from "@/lib/sop";
 import { extractDetails } from "@/lib/extractDetails";
 import { analyzeCv } from "@/lib/cvAnalyzer";
 import { reviewDocument } from "@/lib/docReview";
@@ -138,7 +138,20 @@ export function SopWriter() {
                 {sec.fields.filter(([k]) => k !== "country").map(([k, label, type]) => (
                   <div key={k} className={type === "textarea" ? "sm:col-span-2" : ""}>
                     <Field label={`${label}${filled[k] ? " ✨" : ""}`} hint={filled[k] ? `from your ${filled[k]}` : undefined}>
-                      {type === "textarea" ? <textarea className="input min-h-20" value={s[k]} onChange={(e) => set(k, e.target.value)} /> : <input className="input" value={s[k]} onChange={(e) => set(k, e.target.value)} />}
+                      {type === "textarea" ? (
+                        <textarea className="input min-h-20" value={s[k]} onChange={(e) => set(k, e.target.value)} />
+                      ) : type === "english" ? (
+                        <select className="input" value={ENGLISH_TEST_OPTIONS.includes(s[k]) || !s[k] ? s[k] : "__other"} onChange={(e) => set(k, e.target.value === "__other" ? " " : e.target.value)}>
+                          <option value="">Select…</option>
+                          {ENGLISH_TEST_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                          <option value="__other">Other (type below)…</option>
+                        </select>
+                      ) : (
+                        <input className="input" value={s[k]} onChange={(e) => set(k, e.target.value)} />
+                      )}
+                      {type === "english" && s[k] && !ENGLISH_TEST_OPTIONS.includes(s[k]) && (
+                        <input className="input mt-2" placeholder="Type the test name" value={s[k].trim()} onChange={(e) => set(k, e.target.value || " ")} />
+                      )}
                     </Field>
                   </div>
                 ))}

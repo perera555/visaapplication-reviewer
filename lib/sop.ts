@@ -27,10 +27,16 @@ export const EMPTY_SOP: SopInput = {
   familyTies: "", assets: "", gaps: "", refusals: "", achievements: "", extra: "",
 };
 
-export const SOP_FIELDS: { section: string; fields: [keyof SopInput, string, "text" | "textarea"][] }[] = [
+export const ENGLISH_TEST_OPTIONS = [
+  "IELTS Academic", "IELTS UKVI", "IELTS General Training", "PTE Academic", "PTE Academic UKVI", "TOEFL iBT", "Duolingo English Test",
+  "OET", "Cambridge C1 Advanced", "Cambridge C2 Proficiency", "LanguageCert", "MOI waiver (Medium of Instruction letter)",
+  "University English waiver", "Not required (English-speaking country)", "Not taken yet",
+];
+
+export const SOP_FIELDS: { section: string; fields: [keyof SopInput, string, "text" | "textarea" | "english"][] }[] = [
   { section: "About you", fields: [["fullName", "Full name", "text"], ["nationality", "Nationality", "text"], ["homeCity", "Home city / country", "text"], ["age", "Age", "text"]] },
   { section: "Course you applied for", fields: [["country", "Destination country", "text"], ["level", "Level (e.g. Master's, Bachelor's, Diploma)", "text"], ["course", "Course name", "text"], ["university", "University / college", "text"], ["intake", "Intake (e.g. February 2027)", "text"], ["duration", "Course duration", "text"], ["modules", "Modules / research areas that interest you", "textarea"]] },
-  { section: "Education & English", fields: [["prevDegree", "Highest qualification", "text"], ["prevInstitution", "Institution", "text"], ["prevYear", "Year completed", "text"], ["prevResult", "Result / GPA / class", "text"], ["prevSubjects", "Main subjects / final project", "textarea"], ["englishTest", "English test (or MOI waiver)", "text"], ["englishScore", "Score", "text"]] },
+  { section: "Education & English", fields: [["prevDegree", "Highest qualification", "text"], ["prevInstitution", "Institution", "text"], ["prevYear", "Year completed", "text"], ["prevResult", "Result / GPA / class", "text"], ["prevSubjects", "Main subjects / final project", "textarea"], ["englishTest", "English test (or MOI waiver)", "english"], ["englishScore", "Score (overall band / total)", "text"]] },
   { section: "Work experience", fields: [["workExperience", "Jobs: role, employer, dates, main duties", "textarea"]] },
   { section: "Why this course, university and country", fields: [["whyCourse", "Why this course (how it builds on your studies/work)", "textarea"], ["whyUniversity", "Why this university (ranking, modules, facilities, staff, industry links)", "textarea"], ["whyCountry", "Why this country", "textarea"], ["whyNotHome", "Why not study this in your home country", "textarea"]] },
   { section: "Career plans after the course", fields: [["shortGoal", "Short-term goal (1–3 years after graduating)", "textarea"], ["longGoal", "Long-term goal", "textarea"], ["jobProspects", "Job prospects at home (employers, roles, expected salary)", "textarea"]] },
@@ -53,7 +59,14 @@ export function buildSop(i: SopInput): string {
   const background = para(
     `I completed my ${v(i.prevDegree, "highest qualification")} at ${v(i.prevInstitution, "institution")} in ${v(i.prevYear, "year")}${i.prevResult ? `, achieving ${i.prevResult}` : ""}.`,
     i.prevSubjects && `During my studies I focused on ${i.prevSubjects}.`,
-    i.englishTest && `I have ${i.englishTest}${i.englishScore ? ` with a score of ${i.englishScore}` : ""}.`,
+    i.englishTest &&
+      (/waiver|moi/i.test(i.englishTest)
+        ? `My English proficiency is confirmed by ${i.englishTest.replace(/ \(.*\)/, "")}, as my previous studies were taught in English.`
+        : /not required/i.test(i.englishTest)
+          ? "I am exempt from an English test as I am from an English-speaking country."
+          : /not taken/i.test(i.englishTest)
+            ? "[Add your English test result once available]"
+            : `I have taken the ${i.englishTest}${i.englishScore ? `, achieving an overall score of ${i.englishScore}` : ""}.`),
   );
   const work = i.workExperience.trim() ? `Professionally, ${i.workExperience.trim().replace(/^./, (c) => c.toLowerCase())}` : "";
   const why = para(
