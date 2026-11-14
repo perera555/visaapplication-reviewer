@@ -3,12 +3,51 @@
 // Padding only uses neutral reasons that make no personal factual claim.
 import type { SopInput } from "./sop";
 
-type Ctx = { city: string; finalProject: string; course: string; level: string; uni: string; country: string; home: string; lastEdu: string; prevSubjects: string; role: string; employer: string; duties: string; modules: string };
+type Ctx = { demonym: string; subject: string; fieldSkills: string; fieldIndustry: string; campus: string; cricos: string; scholarship: string; uniFacts: string; city: string; finalProject: string; course: string; level: string; uni: string; country: string; home: string; lastEdu: string; prevSubjects: string; role: string; employer: string; duties: string; modules: string };
 type Expander = (c: Ctx) => string;
 
 const MIN_WORDS = 150;
 const minWords = (i: SopInput) => (i.length === "short" ? 90 : i.length === "standard" ? MIN_WORDS : 280);
 const words = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
+
+const DEMONYM: Record<string, string> = { AU: "Australian", GB: "British", US: "American", CA: "Canadian", NZ: "New Zealand", IE: "Irish", DE: "German", FR: "French", NL: "Dutch", JP: "Japanese", KR: "Korean", SG: "Singaporean", MY: "Malaysian", SE: "Swedish", FI: "Finnish", DK: "Danish", IT: "Italian", ES: "Spanish", CH: "Swiss", AE: "UAE" };
+type FieldKey = "it" | "business" | "finance" | "engineering" | "health" | "hospitality" | "education" | "general";
+const FIELD: Record<FieldKey, { skills: string; industry: string; roles: string }> = {
+  it: { skills: "advanced software design and development, data, cloud and artificial intelligence technologies", industry: "the software and IT industry", roles: "software engineer, systems analyst, solutions architect or IT manager" },
+  business: { skills: "strategic management, leadership, marketing and data-driven decision-making", industry: "the business and corporate sector", roles: "manager, business analyst, marketing manager or consultant" },
+  finance: { skills: "advanced financial analysis, accounting standards, risk management and financial technology", industry: "the banking and finance sector", roles: "financial analyst, accountant, risk manager or finance manager" },
+  engineering: { skills: "advanced engineering design, project management, modern tools and international standards", industry: "the engineering and construction sector", roles: "project engineer, design engineer or engineering manager" },
+  health: { skills: "advanced clinical practice, evidence-based care, health management and research", industry: "the healthcare sector", roles: "senior nurse, clinical specialist or healthcare manager" },
+  hospitality: { skills: "hospitality operations, service quality, revenue management and leadership", industry: "the hospitality and tourism industry", roles: "hotel operations manager, front office manager or tourism manager" },
+  education: { skills: "modern teaching methods, curriculum design, educational technology and leadership", industry: "the education sector", roles: "senior teacher, curriculum coordinator or education manager" },
+  general: { skills: "advanced, up-to-date knowledge and practical skills in my field", industry: "my field", roles: "senior and specialist roles in my field" },
+};
+export function fieldOf(i: SopInput): FieldKey {
+  const detect = (txt: string): FieldKey | null => {
+    const hay = txt.toLowerCase();
+    if (!hay.trim()) return null;
+    if (/comput|software|information tech|\bit\b|cyber|data|network/.test(hay)) return "it";
+    if (/account|financ|bank|econom|acca|cima/.test(hay)) return "finance";
+    if (/engineer|mechan|electr|civil/.test(hay)) return "engineering";
+    if (/nurs|health|medic|pharma|biomed|midwif/.test(hay)) return "health";
+    if (/hospitality|hotel|tourism|culinary|event/.test(hay)) return "hospitality";
+    if (/education|teaching|tesol|early childhood/.test(hay)) return "education";
+    if (/business|management|mba|marketing|commerce|hrm/.test(hay)) return "business";
+    return null;
+  };
+  const fromCourse = detect(`${i.course} ${i.level}`);
+  if (fromCourse) return fromCourse;
+  const hay = `${(i.education ?? []).map((e) => e.qualification).join(" ")}`.toLowerCase();
+  if (/comput|software|information tech|\bit\b|cyber|data|network/.test(hay)) return "it";
+  if (/account|financ|bank|econom|acca|cima/.test(hay)) return "finance";
+  if (/engineer|mechan|electr|civil/.test(hay)) return "engineering";
+  if (/nurs|health|medic|pharma|biomed|midwif/.test(hay)) return "health";
+  if (/hospitality|hotel|tourism|culinary|event/.test(hay)) return "hospitality";
+  if (/education|teaching|tesol|early childhood/.test(hay)) return "education";
+  if (/business|management|mba|marketing|commerce|hrm/.test(hay)) return "business";
+  return "general";
+}
+export const fieldRoles = (i: SopInput) => FIELD[fieldOf(i)].roles;
 
 export function sopContext(i: SopInput): Ctx {
   const edu = [...(i.education ?? [])].filter((e) => e.qualification).sort((a, b) => (a.to || a.from || "").localeCompare(b.to || b.from || "")).pop();
@@ -18,6 +57,14 @@ export function sopContext(i: SopInput): Ctx {
   return {
     finalProject: (i.finalProject ?? "").trim(),
     city: (i.city ?? "").trim(),
+    demonym: DEMONYM[i.countryCode] ?? (i.country.trim() ? `${i.country.trim()}` : "an overseas"),
+    subject: i.course.trim() || "my field",
+    fieldSkills: FIELD[fieldOf(i)].skills,
+    fieldIndustry: FIELD[fieldOf(i)].industry,
+    campus: (i.campus ?? "").trim(),
+    cricos: (i.cricos ?? "").trim(),
+    scholarship: (i.scholarship ?? "").trim(),
+    uniFacts: (i.uniFacts ?? "").trim(),
     course: `${i.level} ${i.course}`.replace(/\s+/g, " ").trim() || "this course",
     level: /master|mba|graduate|postgraduate|phd|doctor/i.test(i.level) ? "postgraduate" : "higher",
     uni: i.university.trim() || "this university",
@@ -173,10 +220,10 @@ const PAD: Record<string, string[]> = {
 };
 
 const INTRO: Record<string, (c: Ctx) => string> = {
-  whyCourse: (c) => `I have chosen the ${c.course} because it fits both my academic background and my career plans.`,
-  whyUniversity: (c) => `I chose ${c.uni} after carefully comparing several universities that offer similar programmes.`,
+  whyCourse: (c) => `I have chosen the ${c.course}${c.cricos ? ` (${c.cricos})` : ""} because it fits both my academic background and my career plans in ${c.fieldIndustry}. In particular, it will give me ${c.fieldSkills}, which are in high demand in ${c.home}.`,
+  whyUniversity: (c) => `I chose ${c.uni}${c.campus ? `, ${c.campus}${c.city ? `, ${c.city}` : ""}` : c.city ? ` in ${c.city}` : ""}, after carefully comparing several universities that offer the ${c.course}.${c.scholarship ? ` I have been awarded the ${c.scholarship}, which reflects the university's confidence in my academic record.` : ""}${c.uniFacts ? ` ${c.uniFacts.replace(/\.?$/, ".")}` : ""}`,
   whyCountry: (c) => `Before choosing ${c.country}${c.city ? ` and ${c.city}` : ""}, I considered several study destinations.`,
-  whyNotHome: (c) => `I carefully considered studying in ${c.home} before deciding to study abroad.`,
+  whyNotHome: (c) => `I carefully considered studying in ${c.home} before deciding to study abroad. An ${/^[AEIOU]/.test(c.demonym) ? "" : ""}${c.demonym} qualification in ${c.subject} will give me knowledge, recognition and exposure that a local programme cannot.`.replace("An Australian", "An Australian").replace(/An (?=[^AEIOU])/, "A "),
   shortGoal: (c) => `After completing the ${c.course}, I will return to ${c.home}.`,
   longGoal: () => ``,
 };
@@ -194,7 +241,7 @@ export function composeLong(key: string, i: SopInput): string {
   const c = sopContext(i);
   const ex = key === "whyCountry" ? { ...EXPAND.whyCountry, ...(COUNTRY_REASONS[i.countryCode] ?? {}) } : EXPAND[key];
   if (!ex) return "";
-  const picked = (i.picks?.[key] ?? []).filter((p) => ex[p]);
+  const picked = (i.picks?.[key] ?? []).filter((p) => ex[p] && !(key === "whyUniversity" && p === "I have been offered a scholarship" && (i.scholarship ?? "").trim()));
   const parts: string[] = [INTRO[key]?.(c) ?? "", ...picked.map((p) => ex[p](c))];
   const out = () => [...parts, OUTRO[key]?.(c) ?? ""].filter(Boolean).join(" ").replace(/(^|[.!?]\s+)the (United|Netherlands|Philippines|Czech|Maldives|Bahamas|Gambia)/g, "$1The $2");
   const target = key === "shortGoal" || key === "longGoal" ? 0 : minWords(i);

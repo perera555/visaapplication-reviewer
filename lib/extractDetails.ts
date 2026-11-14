@@ -10,7 +10,7 @@ export const DETAIL_LABELS: Record<string, string> = {
   email: "Email", phone: "Phone", address: "Address", employer: "Employer", occupation: "Job title",
   income: "Monthly salary", bankBalance: "Bank balance", accountHolder: "Account holder",
   englishTest: "English test", englishScore: "English score", institution: "University / college",
-  course: "Course", courseStart: "Course start date", duration: "Course duration", institutionAddress: "University address", maritalStatus: "Marital status",
+  course: "Course", courseStart: "Course start date", duration: "Course duration", institutionAddress: "University address", campus: "Campus", cricos: "Course code (CRICOS)", scholarship: "Scholarship", maritalStatus: "Marital status",
 };
 
 const MONTHS: Record<string, string> = { jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06", jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12" };
@@ -121,6 +121,13 @@ export function extractDetails(text: string, source: string): Detail[] {
     const uk = flat.match(/(\d{1,5}[A-Za-z]? [A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+)* (?:Road|Street|Lane|Avenue|Way|Place|Square|Drive|Hill|Park)(?:,? [A-Z][A-Za-z]+){0,3},? [A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2})\b/);
     const addr = au ? `${au[1] ? au[1].trim() + ", " : ""}${au[2]}` : uk?.[1];
     if (addr) put("institutionAddress", addr.replace(/ (Western Australia|New South Wales|Victoria|Queensland|South Australia|Tasmania)/, ", $1"));
+  }
+  put("campus", grab(t, /\b([A-Z][a-z]+(?: [A-Z][a-z]+)? Campus)\b/));
+  put("cricos", grab(t, /\bCRICOS(?: Course)?(?: Code)?\s*[:\-]?\s*(\d{6}[A-Z])\b/i)?.replace(/^/, "CRICOS "));
+  {
+    const sch = t.match(/awarded (?:the |a )?([A-Z][A-Za-z' ]{3,60}Scholarship)/)?.[1];
+    const pct = t.match(/(\d{1,3})\s*(?:per cent|percent|%)\s*(?:fee|tuition)\s*(?:reduction|discount|waiver)/i)?.[1];
+    if (sch) put("scholarship", `${sch}${pct ? ` (${pct}% fee reduction)` : ""}`);
   }
   put("courseStart", grab(t, new RegExp(`\\b(?:course start date|course start|start date|commencement date|commencing)\\s*[:\\-]?\\s*${DATE}`, "i")));
 

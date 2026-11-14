@@ -1,3 +1,4 @@
+import { fieldOf, fieldRoles } from "./sopAuto";
 // Career section: home-country job market, target employers, salary comparison and goals.
 // Company names are suggestions only (well-known employers by country and field); salary figures
 // are always entered by the applicant (with a source) because they change and must be verifiable.
@@ -15,7 +16,9 @@ export const CURRENCY_BY_COUNTRY: Record<string, string> = {
 export const currencyOf = (country: string) => CURRENCY_BY_COUNTRY[country] ?? "";
 
 export function careerField(i: SopInput): CareerField {
-  const hay = `${i.course} ${i.level} ${(i.education ?? []).map((e) => e.qualification).join(" ")}`.toLowerCase();
+  const f = fieldOf(i);
+  if (f === "it" || f === "finance" || f === "engineering" || f === "health" || f === "business") return f;
+  const hay = `${i.course} ${i.level}`.toLowerCase();
   if (/comput|software|information tech|\bit\b|cyber|data|network/.test(hay)) return "it";
   if (/account|financ|bank|econom|acca|cima/.test(hay)) return "finance";
   if (/engineer|mechan|electr|civil/.test(hay)) return "engineering";
@@ -106,25 +109,32 @@ export function composeCareer(i: SopInput, shortGoalText: string, longGoalText: 
   const per = i.salaryPeriod || "per month";
   const out: string[] = [];
 
-  out.push(`I have studied the job market in ${home} carefully. The ${f} sector is growing quickly and is increasingly connected to the global market. Small specialist companies look for high-quality professionals with up-to-date skills, while large companies compete for top graduates and offer very good employment packages.`);
+  out.push(`I have studied the job market in ${home} carefully. ${i.marketNotes?.trim() ? i.marketNotes.trim().replace(/\.?$/, ".") : `The ${f} sector is growing quickly and is increasingly connected to the global market. Small specialist companies look for high-quality professionals with up-to-date skills, while large companies compete for top graduates and offer very good employment packages.`}`);
 
+  out.push(`With the ${course}, I will be qualified for roles such as ${fieldRoles(i)}, where employers in ${home} value an international postgraduate qualification.`);
   const big = (i.targetCompanies ?? []).filter(Boolean);
   const niche = (i.nicheCompanies ?? []).filter(Boolean);
   if (big.length) out.push(`Leading employers in ${home} such as ${list(big)} actively recruit professionals with an international postgraduate qualification and current knowledge of industry developments.${niche.length ? ` Smaller niche companies such as ${list(niche)} also look for graduates with specialist, up-to-date skills.` : ""}`);
   else if (niche.length) out.push(`Specialist companies in ${home} such as ${list(niche)} look for graduates with up-to-date skills.`);
 
   let salary = "";
+  const levels = [
+    i.salaryLocal?.trim() && `graduate and junior roles start at around ${money(cur, i.salaryLocal)} ${per}`,
+    i.salaryMid?.trim() && `mid-level professionals with three to five years' experience earn around ${money(cur, i.salaryMid)} ${per}`,
+    i.salarySenior?.trim() && `senior and managerial roles pay ${money(cur, i.salarySenior)} ${per} or more`,
+  ].filter(Boolean) as string[];
+  const structure = levels.length >= 2 ? `In ${home}, salaries in ${f} follow a clear structure: ${levels.length > 1 ? `${levels.slice(0, -1).join(", ")} and ${levels[levels.length - 1]}` : levels[0]}.` : "";
   if (i.salaryLocal?.trim() || i.salaryOverseasMin?.trim()) {
     const local = i.salaryLocal?.trim() ? `Local graduates typically start at around ${money(cur, i.salaryLocal)} ${per}` : "";
     const range = i.salaryOverseasMin?.trim() ? `${money(cur, i.salaryOverseasMin)}${i.salaryOverseasMax?.trim() ? ` to ${money(cur, i.salaryOverseasMax)}` : ""} ${per}` : "";
     const overseas = range ? `professionals with an overseas postgraduate qualification and a few years' experience can earn ${range}` : "";
-    salary = `${[local, overseas].filter(Boolean).join(", while ")}${i.salarySource?.trim() ? ` (source: ${i.salarySource.trim()})` : ""}. This shows the clear career and financial benefit of the ${course}: combined with my experience, it will place me in these higher-level roles in ${home}.`;
+    salary = `${structure ? structure + " " : ""}${[structure ? "" : local, overseas ? (structure ? `Professionals with an overseas postgraduate qualification and a few years' experience can earn ${range}` : overseas) : ""].filter(Boolean).join(", while ")}${i.salarySource?.trim() ? ` (source: ${i.salarySource.trim()})` : ""}. This shows the clear career and financial benefit of the ${course}: combined with my experience, it will place me in these higher-level roles in ${home}.`;
   }
 
   if (shortGoalText.trim()) out.push(shortGoalText.trim());
   if (longGoalText.trim()) out.push(longGoalText.trim());
   if (i.jobProspects?.trim()) out.push(`${i.jobProspects.trim().replace(/^./, (x) => x.toUpperCase()).replace(/\.$/, "")}.`);
-  if (salary) out.push(`\nSalary Comparison in ${home}`, salary);
+  if (salary) out.push(`\nJob Market and Salary Structure in ${home}`, salary);
   out.push(`My career, my family and my future are in ${home}. I have no intention of remaining abroad after my studies; I will return to ${home} and use the knowledge and skills I gain to build my career there.`);
-  return out.join("\n").replace(/\n\n(Salary Comparison in [^\n]+)\n/, "\n\n$1\n");
+  return out.join("\n");
 }

@@ -61,8 +61,10 @@ export type SopInput = {
   city: string;
   /** what the applicant did after school, before higher studies (coaching, first job, delays) */
   afterSchool: string;
+  campus: string; cricos: string; scholarship: string; uniFacts: string;
   targetCompanies: string[]; nicheCompanies: string[];
   salaryCurrency: string; salaryPeriod: string; salaryLocal: string; salaryOverseasMin: string; salaryOverseasMax: string; salarySource: string;
+  salaryMid: string; salarySenior: string; marketNotes: string;
   prevDegree: string; prevInstitution: string; prevYear: string; prevResult: string; prevSubjects: string;
   englishTest: string; englishScore: string;
   workExperience: string; // free text: role, employer, years, duties
@@ -83,8 +85,8 @@ export const EMPTY_SOP: SopInput = {
   destEmployer: "", destRole: "", destSalary: "", destStart: "", destContract: "", sponsorRef: "", whyEmployer: "", destAddress: "",
   education: [], jobs: [], travelHistory: "",
   fullName: "", nationality: "Sri Lanka", homeCity: "", age: "", country: "", countryCode: "",
-  level: "", course: "", university: "", universityAddress: "", intake: "", duration: "", finalProject: "", city: "", afterSchool: "",
-  targetCompanies: [], nicheCompanies: [], salaryCurrency: "", salaryPeriod: "per month", salaryLocal: "", salaryOverseasMin: "", salaryOverseasMax: "", salarySource: "",
+  level: "", course: "", university: "", universityAddress: "", intake: "", duration: "", finalProject: "", city: "", afterSchool: "", campus: "", cricos: "", scholarship: "", uniFacts: "",
+  targetCompanies: [], nicheCompanies: [], salaryCurrency: "", salaryPeriod: "per month", salaryLocal: "", salaryOverseasMin: "", salaryOverseasMax: "", salarySource: "", salaryMid: "", salarySenior: "", marketNotes: "",
   prevDegree: "", prevInstitution: "", prevYear: "", prevResult: "", prevSubjects: "",
   englishTest: "", englishScore: "", workExperience: "",
   whyCourse: "", whyUniversity: "", whyCountry: "", whyNotHome: "", modules: "",
@@ -128,7 +130,7 @@ const OTHER: Section = { section: "Other (optional)", fields: [["gaps", "Explain
 /** Fields for students (SOP / Genuine Student / study plan). Education & jobs are edited as lists. */
 export const SOP_FIELDS: Section[] = [
   ABOUT,
-  { section: "Course you applied for", fields: [["level", "Course level", "select", LEVEL_OPTIONS], ["course", "Course name (e.g. Data Science)", "text"], ["university", "University / college (filled from offer letter)", "text"], ["city", "City of study (e.g. Perth)", "text"], ["universityAddress", "University address (filled from offer letter)", "textarea"], ["intake", "Intake", "select", INTAKE_OPTIONS], ["duration", "Course duration", "select", DURATION_OPTIONS], ["modules", "Modules / research areas that interest you", "textarea"]] },
+  { section: "Course you applied for", fields: [["level", "Course level", "select", LEVEL_OPTIONS], ["course", "Course name (e.g. Data Science)", "text"], ["university", "University / college (filled from offer letter)", "text"], ["city", "City of study (e.g. Perth)", "text"], ["campus", "Campus (filled from offer letter)", "text"], ["cricos", "Course code / CRICOS (filled from offer letter)", "text"], ["scholarship", "Scholarship (filled from offer letter)", "text"], ["uniFacts", "Facts about this university (rankings, awards, specialisations, from its website)", "textarea"], ["universityAddress", "University address (filled from offer letter)", "textarea"], ["intake", "Intake", "select", INTAKE_OPTIONS], ["duration", "Course duration", "select", DURATION_OPTIONS], ["modules", "Modules / research areas that interest you", "textarea"]] },
   { section: "English & studies", fields: [["prevSubjects", "Main subjects of your last degree (tick suggestions or type)", "textarea"], ["finalProject", "Final project / dissertation title (optional)", "text"], ["englishTest", "English test (or MOI waiver)", "select", ENGLISH_TEST_OPTIONS], ["englishScore", "Score (overall band / total)", "text"]] },
   { section: "Why this course, university and country", fields: [["whyCourse", "Why this course (how it builds on your studies/work)", "textarea"], ["whyUniversity", "Why this university (modules, facilities, staff, industry links)", "textarea"], ["whyCountry", "Why this country", "textarea"], ["whyNotHome", "Why not study this in your home country", "textarea"]] },
   { section: "Career plans after the course", fields: [["shortGoal", "Short-term goal (1–3 years after graduating)", "textarea"], ["longGoal", "Long-term goal", "textarea"], ["jobProspects", "Job prospects at home (employers, roles, expected salary)", "textarea"]] },

@@ -76,6 +76,9 @@ export function SopWriter() {
       if (slot === "Offer letter") {
         if (d.institution) add.university = d.institution;
         if (d.institutionAddress) add.universityAddress = d.institutionAddress;
+        if (d.campus) add.campus = d.campus;
+        if (d.cricos) add.cricos = d.cricos;
+        if (d.scholarship) add.scholarship = d.scholarship;
         if (d.course) add.course = d.course.replace(/^(master|bachelor|doctor|graduate (certificate|diploma)) of /i, "");
         const lvl = d.course?.match(/^(Master|Bachelor|Doctor|Graduate Certificate|Graduate Diploma) of/i)?.[0];
         if (lvl) add.level = lvl.replace(/^Doctor of/i, "PhD / Doctor of Philosophy in");
@@ -596,13 +599,18 @@ function CareerMarket({ s, update }: { s: SopInput; update: (p: Partial<SopInput
         <button type="button" className="btn-ghost" onClick={() => { if (niche.trim()) { update({ nicheCompanies: [...small, niche.trim()] }); setNiche(""); } }}>Add</button>
       </div>
       {small.length > 0 && <div className="flex flex-wrap gap-1.5">{small.map((c) => <span key={c} className="chip bg-slate-100 text-slate-700">{c} <button onClick={() => update({ nicheCompanies: small.filter((x) => x !== c) })}>✕</button></span>)}</div>}
-      <div className="text-[11px] font-semibold text-slate-500">Salary comparison (enter real figures you can show, e.g. from job adverts or a salary survey)</div>
+      <label className="block text-xs text-slate-500">Job market in {home} (your own facts: growth, demand, number of companies, with a source)
+        <textarea className="input mt-1 min-h-16" placeholder="e.g. Sri Lanka's IT/BPM sector employs over 100,000 people and aims to reach 200,000 jobs (source: SLASSCOM)" value={s.marketNotes ?? ""} onChange={(e) => update({ marketNotes: e.target.value })} />
+      </label>
+      <div className="text-[11px] font-semibold text-slate-500">Salary structure & comparison (enter real figures you can show, e.g. from job adverts or a salary survey)</div>
       <div className="grid gap-2 sm:grid-cols-3">
         <label className="text-xs text-slate-500">Currency<input className="input mt-1" value={cur} onChange={(e) => update({ salaryCurrency: e.target.value })} /></label>
         <label className="text-xs text-slate-500">Period
           <select className="input mt-1" value={s.salaryPeriod || "per month"} onChange={(e) => update({ salaryPeriod: e.target.value })}><option>per month</option><option>per year</option></select>
         </label>
-        <label className="text-xs text-slate-500">Local graduate salary<input className="input mt-1" placeholder="e.g. 150,000" value={s.salaryLocal ?? ""} onChange={(e) => update({ salaryLocal: e.target.value })} /></label>
+        <label className="text-xs text-slate-500">Graduate / junior salary<input className="input mt-1" placeholder="e.g. 150,000" value={s.salaryLocal ?? ""} onChange={(e) => update({ salaryLocal: e.target.value })} /></label>
+        <label className="text-xs text-slate-500">Mid-level (3–5 years)<input className="input mt-1" placeholder="e.g. 250,000" value={s.salaryMid ?? ""} onChange={(e) => update({ salaryMid: e.target.value })} /></label>
+        <label className="text-xs text-slate-500">Senior / manager<input className="input mt-1" placeholder="e.g. 450,000" value={s.salarySenior ?? ""} onChange={(e) => update({ salarySenior: e.target.value })} /></label>
         <label className="text-xs text-slate-500">Overseas postgraduate: from<input className="input mt-1" placeholder="e.g. 200,000" value={s.salaryOverseasMin ?? ""} onChange={(e) => update({ salaryOverseasMin: e.target.value })} /></label>
         <label className="text-xs text-slate-500">to<input className="input mt-1" placeholder="e.g. 400,000" value={s.salaryOverseasMax ?? ""} onChange={(e) => update({ salaryOverseasMax: e.target.value })} /></label>
         <label className="text-xs text-slate-500">Source<input className="input mt-1" placeholder="e.g. job adverts on topjobs.lk, 2026" value={s.salarySource ?? ""} onChange={(e) => update({ salarySource: e.target.value })} /></label>
