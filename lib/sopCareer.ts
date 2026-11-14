@@ -109,7 +109,7 @@ export function composeCareer(i: SopInput, shortGoalText: string, longGoalText: 
   const per = i.salaryPeriod || "per month";
   const out: string[] = [];
 
-  out.push(`I have studied the job market in ${home} carefully. ${i.marketNotes?.trim() ? i.marketNotes.trim().replace(/\.?$/, ".") : `The ${f} sector is growing quickly and is increasingly connected to the global market. Small specialist companies look for high-quality professionals with up-to-date skills, while large companies compete for top graduates and offer very good employment packages.`}`);
+  out.push(`**I have studied the job market in ${home} carefully.** ${i.marketNotes?.trim() ? `**${i.marketNotes.trim().replace(/\.?$/, ".")}**` : `The ${f} sector is growing quickly and is increasingly connected to the global market. Small specialist companies look for high-quality professionals with up-to-date skills, while large companies compete for top graduates and offer very good employment packages.`}`);
 
   out.push(`With the ${course}, I will be qualified for roles such as ${fieldRoles(i)}, where employers in ${home} value an international postgraduate qualification.`);
   const big = (i.targetCompanies ?? []).filter(Boolean);
@@ -134,7 +134,8 @@ export function composeCareer(i: SopInput, shortGoalText: string, longGoalText: 
   if (shortGoalText.trim()) out.push(shortGoalText.trim());
   if (longGoalText.trim()) out.push(longGoalText.trim());
   if (i.jobProspects?.trim()) out.push(`${i.jobProspects.trim().replace(/^./, (x) => x.toUpperCase()).replace(/\.$/, "")}.`);
-  if (salary) out.push(`\nJob Market and Salary Structure in ${home}`, salary);
+  // the whole job-market & salary paragraph is printed in bold (like the model SOP)
+  if (salary) out.push(`\nJob Market and Salary Structure in ${home}`, `**${salary.replace(/\*\*/g, "")}**`);
   out.push(`My career, my family and my future are in ${home}. I have no intention of remaining abroad after my studies; I will return to ${home} and use the knowledge and skills I gain to build my career there.`);
   return out.join("\n");
 }
