@@ -170,7 +170,15 @@ export const COUNTRY_PROFILES: Record<string, CountryProfile> = {
       "TB test is required if you are a resident of a listed country and staying over 6 months.",
     ],
     extraDocs: {
-      student: [c("atas", "ATAS certificate (if applicable)", "Required for certain postgraduate science/engineering courses.", false, 2, "purpose", ["atas"]), c("tb-test", "TB test certificate", "From an approved clinic if from a listed country.", false, 2, "supporting", ["tb test", "tuberculosis"])],
+      student: [
+        c("gb-cas", "Confirmation of Acceptance for Studies (CAS)", "CAS reference number from your licensed UK student sponsor (university). Check every detail on the CAS (name, course, fees paid, documents listed) before applying.", true, 3, "purpose", ["cas", "confirmation of acceptance for studies"]),
+        c("gb-funds", "Proof of funds held for 28 days", "Course fees (unpaid balance on the CAS) + living costs for up to 9 months, held for 28 consecutive days, with the closing statement dated within 31 days of applying (unless exempt).", true, 3, "financial", ["bank statement", "28 days", "funds", "loan"]),
+        c("gb-cas-docs", "Documents listed on your CAS", "Academic certificates, transcripts and English test used to get the CAS. Bring the same ones.", true, 3, "purpose", ["transcript", "certificate", "degree", "ielts"]),
+        c("tb-test", "TB test certificate", "From an approved clinic if you live in a listed country and the course is longer than 6 months.", false, 2, "supporting", ["tb test", "tuberculosis"]),
+        c("atas", "ATAS certificate (if applicable)", "Required for certain postgraduate science/engineering/technology courses (shown on your CAS).", false, 2, "purpose", ["atas"]),
+        c("gb-ihs", "Immigration Health Surcharge (IHS) payment", "Pay the IHS during the online application and keep the IHS reference.", true, 2, "supporting", ["ihs", "health surcharge"]),
+        c("gb-consent", "Parental consent (under 18)", "Letter of consent from parents/guardian and proof of relationship if you are under 18.", false, 2, "supporting", ["parental consent", "consent"]),
+      ],
       work: [c("ihs", "Immigration Health Surcharge payment", "IHS reference number.", true, 2, "supporting", ["ihs", "health surcharge"])],
     },
     refusalOptions: [
@@ -193,7 +201,13 @@ export const COUNTRY_PROFILES: Record<string, CountryProfile> = {
     ],
     extraDocs: {
       all: [c("ds160", "DS-160 confirmation page", "Barcode confirmation page of the submitted DS-160.", true, 3, "identity", ["ds-160", "ds160", "confirmation"]), c("interview-appointment", "Interview appointment letter", "Appointment confirmation.", true, 2, "identity", ["appointment", "interview"])],
-      student: [c("sevis", "I-901 SEVIS fee receipt", "Proof of SEVIS fee payment.", true, 3, "financial", ["sevis", "i-901", "i901"])],
+      student: [
+        c("us-i20", "Form I-20 (F-1) or DS-2019 (J-1)", "Signed Certificate of Eligibility from your SEVP-certified school, with your SEVIS ID. Check name, program dates and funding.", true, 3, "purpose", ["i-20", "i20", "ds-2019", "sevis id"]),
+        c("sevis", "I-901 SEVIS fee receipt", "Proof of SEVIS fee payment (pay before the interview).", true, 3, "financial", ["sevis", "i-901", "i901"]),
+        c("us-funds", "Financial evidence matching the I-20", "Bank statements, scholarship or loan letters and sponsor documents covering at least the first-year costs shown on the I-20.", true, 3, "financial", ["bank statement", "sponsor", "scholarship", "loan"]),
+        c("us-tests", "Test scores required by the school", "TOEFL / IELTS / Duolingo and SAT / GRE / GMAT as listed by the school.", false, 2, "purpose", ["toefl", "ielts", "sat", "gre", "gmat", "duolingo"]),
+        c("us-ties", "Proof of ties / plans to return", "Evidence you intend to return after studies (family, property, job prospects). Important for 214(b).", false, 2, "ties", ["ties", "property", "family"]),
+      ],
       work: [c("i797", "Form I-797 petition approval", "Approved USCIS petition.", true, 3, "purpose", ["i-797", "i797", "petition"])],
     },
     refusalOptions: [
@@ -213,7 +227,15 @@ export const COUNTRY_PROFILES: Record<string, CountryProfile> = {
     ],
     extraDocs: {
       all: [c("family-info", "Family information form (IMM 5707 / IMM 5645)", "Details of all family members.", true, 2, "ties", ["imm 5707", "imm 5645", "family information"])],
-      student: [c("pal", "Provincial Attestation Letter (PAL)", "From the province where you will study (if required).", true, 3, "purpose", ["pal", "attestation"]), c("gic", "GIC certificate", "Guaranteed Investment Certificate as proof of living funds.", false, 2, "financial", ["gic", "guaranteed investment"])],
+      student: [
+        c("ca-loa", "Letter of Acceptance (LOA) from a DLI", "From a Designated Learning Institution, showing the DLI number and LOA ID.", true, 3, "purpose", ["letter of acceptance", "loa", "dli"]),
+        c("pal", "Provincial / Territorial Attestation Letter (PAL/TAL)", "Required for most study permit applicants; issued by the province/territory through your school.", true, 3, "purpose", ["pal", "tal", "attestation"]),
+        c("ca-funds", "Proof of funds", "First-year tuition plus living costs at the amount IRCC sets, and travel costs: bank statements, education loan, scholarship, paid-tuition receipt.", true, 3, "financial", ["bank statement", "funds", "loan", "tuition"]),
+        c("gic", "GIC certificate", "Guaranteed Investment Certificate, a common proof of living funds.", false, 2, "financial", ["gic", "guaranteed investment"]),
+        c("ca-caq", "Québec Acceptance Certificate (CAQ)", "Required instead of a PAL if you will study in Québec.", false, 2, "purpose", ["caq", "quebec"]),
+        c("ca-plan", "Study plan / letter of explanation", "Why this program and school, how it fits your studies and career, and your plans after graduation.", true, 3, "purpose", ["study plan", "statement of purpose", "letter of explanation"]),
+        c("ca-medical", "Medical exam / police certificate (if required)", "From an IRCC panel physician / your police authority when requested.", false, 2, "supporting", ["medical", "police"]),
+      ],
       work: [c("lmia", "LMIA or employer compliance number", "Positive LMIA or LMIA-exempt offer number.", true, 3, "purpose", ["lmia", "offer of employment number"])],
     },
     refusalOptions: [
@@ -232,7 +254,15 @@ export const COUNTRY_PROFILES: Record<string, CountryProfile> = {
       "Visitor (subclass 600): show genuine temporary stay and sufficient funds.",
     ],
     extraDocs: {
-      student: [c("oshc", "Overseas Student Health Cover (OSHC)", "Cover for the full visa duration.", true, 3, "supporting", ["oshc", "health cover"]), c("gs-statement", "Genuine Student (GS) answers", "Responses to the GS questions in the application.", true, 3, "purpose", ["genuine student", "gs", "gte"])],
+      student: [
+        c("au-coe", "Confirmation of Enrolment (CoE)", "Electronic CoE issued by your Australian education provider after you accept the offer and pay the deposit. You need the CoE code(s) for the ImmiAccount application (one CoE per course, incl. packaged courses).", true, 3, "purpose", ["confirmation of enrolment", "coe", "ecoe", "cricos"]),
+        c("oshc", "Overseas Student Health Cover (OSHC)", "From an approved OSHC provider, covering the whole visa period (your provider can arrange it). Policy number is entered in the application.", true, 3, "supporting", ["oshc", "health cover", "overseas student health"]),
+        c("gs-statement", "Genuine Student (GS) answers", "Your answers to the Genuine Student questions in the application: your circumstances, why this course and provider, why Australia, and how the course helps your future. Back them with evidence.", true, 3, "purpose", ["genuine student", "gs", "gte"]),
+        c("au-funds", "Evidence of financial capacity", "Funds for travel, tuition (first year) and living costs at the amount set by Home Affairs, or proof of annual income from parents/spouse. Show the source of funds (bank statements, education loan sanction, scholarship).", true, 3, "financial", ["bank statement", "loan", "sanction", "financial capacity", "scholarship"]),
+        c("au-english", "English test result (if required)", "IELTS / PTE / TOEFL / others accepted by Home Affairs, at the score required for your course and the visa (some applicants are exempt).", false, 2, "purpose", ["ielts", "pte", "toefl", "english"]),
+        c("au-health", "Health examination (HAP ID)", "Medical exam and chest x-ray with an approved panel physician if requested (HAP ID).", false, 2, "supporting", ["hap id", "medical", "panel physician", "x-ray"]),
+        c("au-welfare", "Welfare arrangements / parental consent (under 18)", "CAAW letter from the provider or a nominated guardian, plus parents' consent, if you are under 18.", false, 2, "supporting", ["caaw", "welfare", "guardian", "parental consent"]),
+      ],
     },
     refusalOptions: [
       "If refused onshore, you may be able to appeal to the Administrative Review Tribunal (ART) within the deadline in your letter.",
@@ -243,13 +273,30 @@ export const COUNTRY_PROFILES: Record<string, CountryProfile> = {
     portal: { name: "Immigration New Zealand", url: "https://www.immigration.govt.nz/" },
     formName: "Online application on Immigration NZ",
     notes: ["Visitors from visa-waiver countries need an NZeTA instead of a visa."],
-    extraDocs: { student: [c("insurance-nz", "Approved medical & travel insurance", "Required for international students.", true, 2, "supporting", ["insurance"])] },
+    extraDocs: {
+      student: [
+        c("nz-offer", "Offer of place", "From an approved New Zealand education provider, with the course details and fees.", true, 3, "purpose", ["offer of place", "offer letter"]),
+        c("nz-fees", "Evidence tuition fees are paid", "Receipt for the fees (or the portion required).", true, 3, "financial", ["fee receipt", "tuition", "payment"]),
+        c("nz-funds", "Evidence of living funds", "Funds for living costs at the amount set by Immigration NZ, or a financial undertaking from a sponsor.", true, 3, "financial", ["bank statement", "funds", "sponsor"]),
+        c("insurance-nz", "Approved medical & travel insurance", "Required for international students for the whole stay.", true, 2, "supporting", ["insurance"]),
+        c("nz-return", "Onward travel or funds for it", "Return ticket or extra funds to buy one.", false, 2, "travel", ["ticket", "flight"]),
+      ],
+    },
     refusalOptions: ["Re-apply addressing concerns; some decisions can be reconsidered — check the decision letter."],
   },
   IE: {
     portal: { name: "Irish Immigration Service", url: "https://www.irishimmigration.ie/" },
     formName: "AVATS online application + supporting documents",
     notes: ["Ireland is not in Schengen — a separate Irish visa is needed."],
+    extraDocs: {
+      student: [
+        c("ie-acceptance", "Letter of acceptance", "From an Irish college on the Interim List of Eligible Programmes (ILEP), for a full-time course.", true, 3, "purpose", ["letter of acceptance", "acceptance", "ilep"]),
+        c("ie-fees", "Evidence of fees paid", "Receipt from the college for the fees paid.", true, 3, "financial", ["fee receipt", "fees paid"]),
+        c("ie-funds", "Evidence of funds", "Immediate access to the required amount for living costs for the first year (bank statements covering 6 months).", true, 3, "financial", ["bank statement", "funds"]),
+        c("ie-insurance", "Private medical insurance", "Valid for your stay in Ireland.", true, 2, "supporting", ["insurance", "medical insurance"]),
+        c("ie-gaps", "Explanation of gaps in education", "Account for any gaps in your education history with evidence.", false, 2, "purpose", ["gap", "explanation"]),
+      ],
+    },
     refusalOptions: ["You can appeal an Irish visa refusal in writing within 2 months of the decision (one appeal per application)."],
   },
   JP: {
@@ -258,7 +305,18 @@ export const COUNTRY_PROFILES: Record<string, CountryProfile> = {
     extraDocs: { student: [c("coe-jp", "Certificate of Eligibility (CoE)", "Issued by Japanese immigration.", true, 3, "purpose", ["certificate of eligibility", "coe"])], work: [c("coe-jp", "Certificate of Eligibility (CoE)", "Issued by Japanese immigration.", true, 3, "purpose", ["certificate of eligibility", "coe"])] },
     refusalOptions: ["Japan generally does not accept a re-application for the same purpose within 6 months of refusal."],
   },
-  KR: { portal: { name: "Korea Visa Portal", url: "https://www.visa.go.kr/" }, notes: ["Check K-ETA eligibility for short visits."] },
+  KR: {
+    portal: { name: "Korea Visa Portal", url: "https://www.visa.go.kr/" },
+    notes: ["Check K-ETA eligibility for short visits.", "Students apply for a D-2 (degree) or D-4 (language) visa."],
+    extraDocs: {
+      student: [
+        c("kr-admission", "Certificate of admission (standard admission letter)", "Issued by the Korean university for D-2 / D-4.", true, 3, "purpose", ["certificate of admission", "admission"]),
+        c("kr-business-reg", "University's business registration copy", "Usually provided by the university with the admission letter.", false, 2, "purpose", ["business registration"]),
+        c("kr-funds", "Proof of funds", "Bank balance certificate meeting the amount required for your program.", true, 3, "financial", ["bank balance", "balance certificate", "bank statement"]),
+        c("kr-apostille", "Apostilled / consular-confirmed final degree", "Final academic certificate with apostille or embassy confirmation.", true, 3, "purpose", ["apostille", "degree", "consular"]),
+      ],
+    },
+  },
   CN: { portal: { name: "China Visa Application Service Center", url: "https://www.visaforchina.cn/" } },
   IN: { portal: { name: "Indian Visa Online", url: "https://indianvisaonline.gov.in/" }, notes: ["e-Visa available for many nationalities (tourist, business, medical)."] },
   AE: {
@@ -275,8 +333,30 @@ export const COUNTRY_PROFILES: Record<string, CountryProfile> = {
   TH: { portal: { name: "Thai e-Visa", url: "https://www.thaievisa.go.th/" } },
   SA: { portal: { name: "Saudi Visa Platform", url: "https://visa.mofa.gov.sa/" } },
   TR: { portal: { name: "Türkiye e-Visa", url: "https://www.evisa.gov.tr/" } },
-  DE: { portal: { name: "German Federal Foreign Office – Visa", url: "https://www.auswaertiges-amt.de/en/visa-service" }, notes: ["Students usually need a blocked account (Sperrkonto) for living costs."], extraDocs: { student: [c("blocked-account", "Blocked account confirmation (Sperrkonto)", "Confirmation of the required yearly amount.", true, 3, "financial", ["blocked account", "sperrkonto", "expatrio", "fintiba"])] } },
-  FR: { portal: { name: "France-Visas", url: "https://france-visas.gouv.fr/" }, extraDocs: { student: [c("campus-france", "Campus France registration", "Études en France procedure confirmation (where applicable).", true, 2, "purpose", ["campus france"])] } },
+  DE: {
+    portal: { name: "German Federal Foreign Office – Visa", url: "https://www.auswaertiges-amt.de/en/visa-service" },
+    notes: ["Students usually need a blocked account (Sperrkonto) for living costs."],
+    extraDocs: {
+      student: [
+        c("de-admission", "Letter of admission (Zulassungsbescheid)", "From the German university, or proof of a preparatory course / application in process.", true, 3, "purpose", ["zulassung", "admission", "zulassungsbescheid"]),
+        c("blocked-account", "Blocked account confirmation (Sperrkonto)", "Confirmation for the required yearly living-cost amount, or a formal obligation letter (Verpflichtungserklärung) / scholarship.", true, 3, "financial", ["blocked account", "sperrkonto", "expatrio", "fintiba", "verpflichtungserklarung"]),
+        c("de-insurance", "Health insurance", "Travel health insurance until enrolment, then German statutory/student health insurance.", true, 2, "supporting", ["insurance", "krankenversicherung"]),
+        c("de-aps", "APS certificate (if required)", "Academic Evaluation Centre certificate. Required for applicants from certain countries (e.g. India, China, Vietnam).", false, 3, "purpose", ["aps", "academic evaluation"]),
+        c("de-language", "Language certificate", "German (e.g. TestDaF/DSH/Goethe) or English (IELTS/TOEFL) as required by the course.", true, 2, "purpose", ["testdaf", "dsh", "goethe", "ielts", "toefl"]),
+      ],
+    },
+  },
+  FR: {
+    portal: { name: "France-Visas", url: "https://france-visas.gouv.fr/" },
+    extraDocs: {
+      student: [
+        c("campus-france", "Campus France / Études en France confirmation", "Required in countries that use the Études en France procedure (interview / attestation).", true, 2, "purpose", ["campus france", "etudes en france"]),
+        c("fr-admission", "Pre-enrolment / acceptance certificate", "From the French institution (attestation de pré-inscription).", true, 3, "purpose", ["pre-inscription", "admission", "acceptance"]),
+        c("fr-funds", "Proof of resources", "At least the monthly amount France requires for students, for the stay (bank statements, scholarship, sponsor attestation).", true, 3, "financial", ["bank statement", "ressources", "scholarship"]),
+        c("fr-accommodation", "Accommodation in France", "Residence booking, rental contract or host attestation.", true, 2, "purpose", ["accommodation", "logement", "attestation d'hebergement"]),
+      ],
+    },
+  },
   IT: { portal: { name: "Visto per l'Italia", url: "https://vistoperitalia.esteri.it/" } },
   ES: { portal: { name: "Spanish Ministry of Foreign Affairs", url: "https://www.exteriores.gob.es/" } },
   NL: { portal: { name: "Netherlands Worldwide", url: "https://www.netherlandsworldwide.nl/" } },
@@ -339,14 +419,30 @@ export const ENGLISH_WAIVER_DOC: DocRequirement = {
   source: "standard",
 };
 
+/** Country documents that take the place of a generic one (so it is not asked for twice). */
+const REPLACES: Record<string, string> = {
+  "au-coe": "admission-letter", "au-funds": "bank-statements", "au-english": "english-test", "gs-statement": "sop",
+  "gb-cas": "admission-letter", "gb-funds": "bank-statements", "gb-cas-docs": "academic-transcripts",
+  "us-i20": "admission-letter", "us-funds": "bank-statements", "us-tests": "english-test",
+  "ca-loa": "admission-letter", "ca-funds": "bank-statements", "ca-plan": "sop",
+  "nz-offer": "admission-letter", "nz-funds": "bank-statements", "nz-fees": "tuition-receipt", "insurance-nz": "insurance",
+  "de-admission": "admission-letter", "blocked-account": "bank-statements", "de-insurance": "insurance", "de-language": "english-test",
+  "fr-admission": "admission-letter", "fr-funds": "bank-statements",
+  "kr-admission": "admission-letter", "kr-funds": "bank-statements",
+  "ie-acceptance": "admission-letter", "ie-fees": "tuition-receipt", "ie-funds": "bank-statements", "ie-insurance": "insurance",
+  "coe-jp": "admission-letter",
+};
+
 /** Full standard checklist for a destination + visa type (admin-added items are merged on top in the UI). */
 export function getRequirements(countryCode: string, visaType: VisaTypeId, opts: { englishWaiver?: boolean } = {}): DocRequirement[] {
   const profile = getCountryProfile(countryCode);
-  const list = [...BASE, ...(BY_TYPE[visaType] ?? []), ...(profile.extraDocs?.all ?? []), ...(profile.extraDocs?.[visaType] ?? [])];
+  const countryDocs = [...(profile.extraDocs?.all ?? []), ...(profile.extraDocs?.[visaType] ?? [])];
+  const replaced = new Set(countryDocs.map((d) => REPLACES[d.id]).filter(Boolean));
+  const list = [...BASE, ...(BY_TYPE[visaType] ?? []).filter((d) => !replaced.has(d.id)), ...countryDocs];
   const seen = new Set<string>();
   const unique = list.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
   if (!opts.englishWaiver) return unique;
-  const i = unique.findIndex((r) => r.id === "english-test");
+  const i = unique.findIndex((r) => r.id === "english-test" || r.id === "au-english");
   if (i >= 0) unique.splice(i, 1, ENGLISH_WAIVER_DOC);
   return unique;
 }

@@ -6,6 +6,7 @@ export const NAV = [
   { href: "/countries", label: "Countries" },
   { href: "/refusal", label: "Refusal" },
   { href: "/letter", label: "Letters" },
+  { href: "/sop", label: "SOP" },
   { href: "/form", label: "Form" },
   { href: "/saved", label: "My Saved" },
   { href: "/guide", label: "Guide" },

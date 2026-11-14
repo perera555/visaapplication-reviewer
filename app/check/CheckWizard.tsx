@@ -381,6 +381,7 @@ export function CheckWizard() {
                           <p className="mt-0.5 text-sm text-slate-600">{r.description}</p>
                           {!ok && r.mandatory && <p className="mt-1 text-xs font-bold text-rose-600">⚠ This document is required. Upload it, or tick “I have it” if you will send it later.</p>}
                           {!ok && !r.mandatory && r.weight >= 2 && <p className="mt-1 text-xs font-medium text-amber-700">Recommended: adding this improves your success rate.</p>}
+                          {["sop", "gs-statement", "ca-plan"].includes(r.id) && <Link href="/sop" className="mt-1 inline-block text-xs font-semibold text-indigo-600 hover:underline">🎓 Write it with the SOP writer →</Link>}
                           {files.length > 0 && (
                             <ul className="mt-2 flex flex-wrap gap-2">
                               {files.map((a) => (
