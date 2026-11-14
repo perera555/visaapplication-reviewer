@@ -8,6 +8,7 @@ const FEATURES = [
   { icon: "📂", title: "Document review", text: "Upload all your documents. We recognise each one, tick off the checklist and flag what is missing.", href: "/check", color: "from-indigo-500 to-violet-500" },
   { icon: "📊", title: "Success rate 0–100%", text: "A score based on your documents, finances, ties, travel history and previous refusals, with reasons.", href: "/check", color: "from-emerald-500 to-cyan-500" },
   { icon: "🚫", title: "Refusal analysis", text: "Paste or upload a refusal letter. We pick out the officer's reasons and what you need to re-apply.", href: "/refusal", color: "from-rose-500 to-orange-500" },
+  { icon: "🎓", title: "SOP / Genuine Student writer", text: "Upload your CV, transcripts and offer letter, or type your details, and get a genuine SOP in your country's format: Australia GS, Canada study plan and more.", href: "/sop", color: "from-violet-500 to-fuchsia-500" },
   { icon: "✍️", title: "Appeal & letter writer", text: "Reconsideration, appeal and cover letters to the embassy or high commission, ready to print.", href: "/letter", color: "from-amber-500 to-pink-500" },
   { icon: "📝", title: "Application form filler", text: "Fill a guided visa form, or upload an official PDF form and fill it right here in the app.", href: "/form", color: "from-sky-500 to-indigo-500" },
   { icon: "🌍", title: "Country by country", text: "Requirements, process, portals and appeal options for 195 countries.", href: "/countries", color: "from-teal-500 to-lime-500" },

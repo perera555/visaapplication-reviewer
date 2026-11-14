@@ -55,6 +55,7 @@ export function HomeHero() {
           </form>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href={`/countries/${country.toLowerCase()}`} className="btn glass px-5 py-2.5 text-white hover:bg-white/15">See {COUNTRIES.find((c) => c.code === country)?.name} requirements</Link>
+            <Link href="/sop" className="btn glass px-5 py-2.5 text-white hover:bg-white/15">🎓 Write my SOP</Link>
             <Link href="/refusal" className="btn glass px-5 py-2.5 text-white hover:bg-white/15">My visa was refused</Link>
           </div>
           <div className="mt-10 grid max-w-md grid-cols-3 gap-3 text-center">
