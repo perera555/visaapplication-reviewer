@@ -260,7 +260,8 @@ function auto(i: SopInput) {
   const country = i.country || "the destination country";
   const course = `${i.level} ${i.course}`.replace(/\s+/g, " ").trim() || "this course";
   const lastEdu = [...(i.education ?? [])].filter((e) => e.qualification).sort((a, b) => (a.to || a.from).localeCompare(b.to || b.from)).pop();
-  const lastJob = [...(i.jobs ?? [])].filter((j) => j.role).sort((a, b) => (a.current ? 1 : 0) - (b.current ? 1 : 0) || (a.from || "").localeCompare(b.from || "")).pop();
+  const jobsAll = [...(i.jobs ?? [])].filter((j) => j.role);
+  const lastJob = jobsAll.filter((j) => j.current).sort((a, b) => (a.from || "9999").localeCompare(b.from || "9999"))[0] ?? jobsAll.sort((a, b) => (a.to || "").localeCompare(b.to || "")).pop();
   return {
     whyCourse: `it builds directly on ${lastEdu ? lastEdu.qualification.trim().replace(/^(?!my |a |the )/i, "my ") : "my previous studies"}${lastJob ? ` and my experience as ${lastJob.role.trim()}${lastJob.employer ? ` at ${lastJob.employer.trim()}` : ""}` : ""}, and it will give me the advanced, up-to-date knowledge I need to progress in my career`,
     whyUniversity: `its ${course} is well structured and industry-relevant, covers the areas I want to specialise in, and offers the academic support, facilities and learning environment I need to succeed`,
@@ -349,7 +350,7 @@ export function buildSop(input: SopInput): string {
       travel && `Travel History (Immigration History)\n${travel}`,
       (fam || i.assets) && `Family Background\n${para(fam, i.assets && `I also have ${i.assets}, which I will return to.`)}`,
       `Financial Support\n${money}`,
-      para(i.refusals && (/^In /.test(i.refusals) ? i.refusals : `I would like to disclose a previous visa refusal: ${i.refusals}.`), i.achievements && `Outside my studies, ${i.achievements}.`, i.extra) && `Additional information\n${para(i.refusals && (/^In /.test(i.refusals) ? i.refusals : `I would like to disclose a previous visa refusal: ${i.refusals}.`), i.achievements && `Outside my studies, ${i.achievements}.`, i.extra)}`,
+      para(i.refusals && (/^In /.test(i.refusals) ? i.refusals : `I would like to disclose a previous visa refusal: ${i.refusals}.`), i.achievements && `Outside my studies, ${i.achievements}.`, i.extra) && `Additional Information\n${para(i.refusals && (/^In /.test(i.refusals) ? i.refusals : `I would like to disclose a previous visa refusal: ${i.refusals}.`), i.achievements && `Outside my studies, ${i.achievements}.`, i.extra)}`,
       `${complianceLine(i, homeCountry)} I would be grateful if you would consider my application favourably.`,
       `Yours sincerely,\n\n\n${name}\n(Applicant)`,
     ].filter(Boolean).join("\n\n");

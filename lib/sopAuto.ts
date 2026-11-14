@@ -12,7 +12,8 @@ const words = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
 
 export function sopContext(i: SopInput): Ctx {
   const edu = [...(i.education ?? [])].filter((e) => e.qualification).sort((a, b) => (a.to || a.from || "").localeCompare(b.to || b.from || "")).pop();
-  const job = [...(i.jobs ?? [])].filter((j) => j.role).sort((a, b) => (a.current ? 1 : 0) - (b.current ? 1 : 0) || (a.from || "").localeCompare(b.from || "")).pop();
+  const jobs = [...(i.jobs ?? [])].filter((j) => j.role);
+  const job = jobs.filter((j) => j.current).sort((a, b) => (a.from || "9999").localeCompare(b.from || "9999"))[0] ?? jobs.sort((a, b) => (a.to || "").localeCompare(b.to || "")).pop();
   const home = i.nationality.trim() || i.homeCity.split(",").pop()?.trim() || "my home country";
   return {
     finalProject: (i.finalProject ?? "").trim(),
@@ -46,7 +47,7 @@ const EXPAND: Record<string, Record<string, Expander>> = {
     "it covers emerging technologies used in industry today": (c) => `Its content covers emerging technologies and current industry practice that were not covered in depth in my previous studies and are increasingly in demand from employers in ${c.home}.`,
   },
   whyUniversity: {
-    "the course modules match my career goals": (c) => `The structure of the ${c.course} at ${c.uni}, including its core and elective units, matches my career goals closely. After comparing several programmes, I found this one offers the best combination of content and specialisation for what I want to achieve.`,
+    "the course modules match my career goals": (c) => `The structure of the ${c.course} at ${c.uni}, including its core and elective units, matches my career goals closely and offers the best combination of content and specialisation for what I want to achieve.`,
     "strong industry links, placements and projects": (c) => `${c.uni} has strong links with industry, offering placements, industry projects and guest lectures that connect classroom learning with real workplaces. This practical exposure is important for my career.`,
     "experienced, research-active teaching staff": () => `The course is taught by experienced, research-active academic staff, so I will learn from people working at the forefront of the field and receive feedback that reflects current practice.`,
     "modern facilities, labs and learning resources": () => `The university provides modern facilities, specialist laboratories and extensive learning resources that will support both my coursework and my independent study.`,
