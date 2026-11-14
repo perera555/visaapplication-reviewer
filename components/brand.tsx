@@ -2,6 +2,7 @@ export const NAV = [
   { href: "/register", label: "Register" },
   { href: "/check", label: "Doc Review" },
   { href: "/review", label: "Support Docs" },
+  { href: "/verify", label: "Original Check" },
   { href: "/countries", label: "Countries" },
   { href: "/refusal", label: "Refusal" },
   { href: "/letter", label: "Letters" },

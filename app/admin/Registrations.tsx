@@ -91,6 +91,61 @@ export function Registrations() {
   );
 }
 
+/** Admin records a document by hand when an upload is not possible (no file needed). */
+function ManualDocEntry({ regId, onAdded }: { regId: string; onAdded: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [cat, setCat] = useState(DOC_CATEGORIES[0]);
+  const [name, setName] = useState("");
+  const [received, setReceived] = useState("Original seen at office");
+  const [status, setStatus] = useState<"original" | "needs-check">("original");
+  const [note, setNote] = useState("");
+  const [err, setErr] = useState("");
+  async function add() {
+    setErr("");
+    if (!name.trim()) return setErr("Enter the document name.");
+    const fd = new FormData();
+    fd.append("manualEntry", "1");
+    fd.append("category", cat);
+    fd.append("name", name.trim());
+    fd.append("received", received);
+    fd.append("status", status);
+    fd.append("note", note);
+    try {
+      await api(`/api/registrations/${regId}/documents`, { method: "POST", body: fd });
+      setName("");
+      setNote("");
+      setOpen(false);
+      onAdded();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed");
+    }
+  }
+  if (!open) return <button type="button" className="btn-ghost mt-2 w-full sm:w-auto" onClick={() => setOpen(true)}>✍️ Add document manually (no file)</button>;
+  return (
+    <div className="mt-2 space-y-2 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-3">
+      <div className="font-semibold">✍️ Add document manually</div>
+      <p className="text-xs text-slate-600">Use this when the upload failed, the scan cannot be read, or the customer gave you the original in person. You can upload the file later.</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <select className="input" value={cat} onChange={(e) => setCat(e.target.value)}>{DOC_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>
+        <input className="input" placeholder="Document name, e.g. HNB bank statement Jan–Jun" value={name} onChange={(e) => setName(e.target.value)} />
+        <select className="input" value={received} onChange={(e) => setReceived(e.target.value)}>
+          {["Original seen at office", "Original received by hand", "Received by email", "Received by WhatsApp", "Received by post", "Upload failed, details recorded"].map((r) => <option key={r}>{r}</option>)}
+        </select>
+        <select className="input" value={status} onChange={(e) => setStatus(e.target.value as "original" | "needs-check")}>
+          <option value="original">✅ Verified original</option>
+          <option value="needs-check">🔍 Needs checking</option>
+        </select>
+      </div>
+      <input className="input" placeholder="Note (optional), e.g. Verified with bank by phone on 14 Nov" value={note} onChange={(e) => setNote(e.target.value)} />
+      {err && <p className="text-sm text-rose-600">{err}</p>}
+      <div className="flex gap-2">
+        <button type="button" className="btn-primary" onClick={add}>Add document</button>
+        <button type="button" className="btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 /** Admin: review every stored document of a customer (fetched from the database, reviewed in the browser). */
 function AdminDocReview({ reg }: { reg: Registration }) {
   const [items, setItems] = useState<ReviewItem[]>([]);
@@ -180,8 +235,29 @@ function RegistrationDetail({ reg, onChange, onDeleted }: { reg: Registration; o
       setAuthBusy(null);
     }
   }
+  /** Replace a manual record with the real file, keeping the admin's "verified original" decision. */
+  async function attachToManual(docId: string, category: string, original: boolean, file?: File) {
+    if (!file) return;
+    setBusy(`Uploading ${file.name}…`);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("category", category);
+    if (original) {
+      fd.append("manualOriginal", "1");
+      fd.append("note", "File attached to a manually recorded, verified document");
+    }
+    try {
+      await api(`/api/registrations/${reg.id}/documents`, { method: "POST", body: fd });
+      await api(`/api/registrations/${reg.id}/documents?docId=${docId}`, { method: "DELETE" });
+      setMsg("File attached.");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Upload failed");
+    }
+    setBusy("");
+    onChange();
+  }
   async function checkAll() {
-    for (const d of reg.documents.filter((x) => !x.auth)) await recheck(d.id);
+    for (const d of reg.documents.filter((x) => !x.auth && x.type !== "manual")) await recheck(d.id);
   }
   async function delDoc(id: string) {
     if (!confirm("Delete this document?")) return;
@@ -246,10 +322,22 @@ function RegistrationDetail({ reg, onChange, onDeleted }: { reg: Registration; o
               {list.map((doc) => (
                 <div key={doc.id} className="py-1.5">
                   <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <a className="min-w-0 flex-1 truncate text-indigo-700 hover:underline" href={`/api/registrations/${reg.id}/documents/${doc.id}`} target="_blank" rel="noreferrer">📄 {doc.name}</a>
+                    {doc.type === "manual" ? (
+                      <span className="min-w-0 flex-1 truncate">✍️ {doc.name} <span className="text-xs text-slate-400">(recorded manually, no file)</span></span>
+                    ) : (
+                      <a className="min-w-0 flex-1 truncate text-indigo-700 hover:underline" href={`/api/registrations/${reg.id}/documents/${doc.id}`} target="_blank" rel="noreferrer">📄 {doc.name}</a>
+                    )}
                     <button type="button" onClick={() => setOpenDoc(openDoc === doc.id ? null : doc.id)} title="Original / fake check"><AuthBadge auth={doc.auth} manual={doc.manual} /></button>
-                    <span className="text-xs text-slate-400">{Math.round(doc.size / 1024)} KB · {doc.by}</span>
-                    <a className="text-xs text-slate-600 hover:underline" href={`/api/registrations/${reg.id}/documents/${doc.id}`} download={doc.name}>⬇</a>
+                    {doc.type === "manual" ? (
+                      <label className="cursor-pointer text-xs font-semibold text-indigo-600 hover:underline">📎 Attach file
+                        <input type="file" className="hidden" onChange={(e) => { attachToManual(doc.id, doc.category, doc.manual?.status === "original", e.target.files?.[0]); e.target.value = ""; }} />
+                      </label>
+                    ) : (
+                      <>
+                        <span className="text-xs text-slate-400">{Math.round(doc.size / 1024)} KB · {doc.by}</span>
+                        <a className="text-xs text-slate-600 hover:underline" href={`/api/registrations/${reg.id}/documents/${doc.id}`} download={doc.name}>⬇</a>
+                      </>
+                    )}
                     <button className="text-xs text-rose-600" onClick={() => delDoc(doc.id)}>Delete</button>
                   </div>
                   {openDoc === doc.id && (
@@ -258,7 +346,7 @@ function RegistrationDetail({ reg, onChange, onDeleted }: { reg: Registration; o
                         auth={doc.auth}
                         manual={doc.manual}
                         busy={authBusy === doc.id}
-                        onRecheck={() => recheck(doc.id)}
+                        onRecheck={doc.type === "manual" ? undefined : () => recheck(doc.id)}
                         onManual={(status, note) => setManual(doc.id, status, note)}
                       />
                     </div>
@@ -273,6 +361,7 @@ function RegistrationDetail({ reg, onChange, onDeleted }: { reg: Registration; o
           <label className="btn-ghost cursor-pointer">+ Add document<input type="file" multiple className="hidden" onChange={(e) => { upload(e.target.files); e.target.value = ""; }} /></label>
           {busy && <span className="text-sm text-indigo-700">{busy}</span>}
         </div>
+        <ManualDocEntry regId={reg.id} onAdded={() => { setMsg("Document added manually."); onChange(); }} />
         <label className="mt-2 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-sm">
           <input type="checkbox" className="mt-0.5 h-4 w-4 accent-emerald-600" checked={asOriginal} onChange={(e) => setAsOriginal(e.target.checked)} />
           <span><b>Add as verified original</b>: I have seen the original document. It is saved as “✅ Verified original” even if the automatic check flags it.</span>

@@ -21,6 +21,35 @@ export async function POST(req: Request, ctx: RouteContext<"/api/registrations/[
   if (!reg) return Response.json({ error: "Registration not found" }, { status: 404 });
   const form = await req.formData();
   const file = form.get("file");
+
+  // Admin records a document manually without a file (upload failed, original handed over in person, etc.)
+  if (by === "admin" && form.get("manualEntry") === "1") {
+    const admin = await getSessionAdmin();
+    const name = String(form.get("name") ?? "").trim();
+    if (!name) return Response.json({ error: "Enter the document name." }, { status: 400 });
+    const cat = String(form.get("category") ?? "Other");
+    const status = String(form.get("status") ?? "original");
+    const doc: RegDocument = {
+      id: newId(),
+      category: DOC_CATEGORIES.includes(cat) ? cat : "Other",
+      name,
+      type: "manual",
+      size: 0,
+      uploadedAt: new Date().toISOString(),
+      by: "admin",
+      manual: {
+        status: status === "needs-check" ? "needs-check" : "original",
+        note: [String(form.get("received") ?? ""), String(form.get("note") ?? "")].filter(Boolean).join(" · ").slice(0, 1000) || "Added manually by admin",
+        by: admin?.name || admin?.email || "admin",
+        at: new Date().toISOString(),
+      },
+    };
+    reg.documents.push(doc);
+    if (reg.status === "documents-pending" && reg.documents.length >= 3) reg.status = "registered";
+    await saveRegistration(reg);
+    return Response.json(doc);
+  }
+
   if (!(file instanceof File) || file.size === 0) return Response.json({ error: "Choose a file" }, { status: 400 });
   if (file.size > MAX_REG_FILE) return Response.json({ error: `${file.name} is too large (max 4 MB per file).` }, { status: 413 });
   const cat = String(form.get("category") ?? "Other");
