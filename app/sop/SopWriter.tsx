@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { COUNTRIES, flag } from "@/lib/countries";
-import { EMPTY_FAMILY, FAMILY_OPTIONS, REASON_OPTIONS, REFUSAL_CHANGES, REFUSAL_REASONS, TRIP_PURPOSES, composeField, type Family, type RefusalEntry, type TripEntry } from "@/lib/sop";
+import { EXAMPLE_SOP, EMPTY_FAMILY, FAMILY_OPTIONS, REASON_OPTIONS, REFUSAL_CHANGES, REFUSAL_REASONS, TRIP_PURPOSES, composeField, type Family, type RefusalEntry, type TripEntry } from "@/lib/sop";
 import { EMPTY_EDU, EMPTY_JOB, EMPTY_SOP, QUALIFICATION_OPTIONS, SOP_FIELDS, WORK_FIELDS, buildSop, findGaps, sopFormat, wordCount, type EduEntry, type JobEntry, type SopInput } from "@/lib/sop";
 import { extractDetails } from "@/lib/extractDetails";
 import { analyzeCv } from "@/lib/cvAnalyzer";
@@ -166,7 +166,10 @@ export function SopWriter() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card space-y-5">
-          <h2 className="font-bold">2. Your details (type or correct them)</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-bold">2. Your details (type or correct them)</h2>
+            <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => { if (confirm("Replace the form with the example SOP? (Your current details will be replaced.)")) { setEdited(null); setS(EXAMPLE_SOP); setFilled({}); setMsg("Example loaded: Master of Computer Science, Australia (full letter style). Replace the details with your own."); } }}>📄 Load example SOP</button>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {([["student", "🎓 Student", "SOP / Genuine Student / study plan"], ["worker", "💼 Worker", "Work visa cover letter"]] as const).map(([t, l, h]) => (
               <button key={t} type="button" onClick={() => { setEdited(null); setS((x) => ({ ...x, applicantType: t })); }} className={`rounded-2xl border p-3 text-left transition ${s.applicantType === t ? "border-transparent bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg" : "border-line bg-white hover:bg-slate-50"}`}>

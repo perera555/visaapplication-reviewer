@@ -23,12 +23,12 @@ export type RefusalEntry = { country: string; year: string; visaType: string; re
 
 /** Quick-pick reasons the applicant ticks; "Write it for me" turns them into a paragraph. */
 export const REASON_OPTIONS: Partial<Record<keyof SopInput, string[]>> = {
-  whyCourse: ["it builds on my previous degree", "it builds on my work experience", "it fills the skill gaps I need for my career", "it is needed for promotion in my current field", "it is an industry-recognised qualification", "I want to specialise further in this area", "I am moving my career into this field"],
-  whyUniversity: ["the course modules match my career goals", "strong industry links, placements and projects", "experienced, research-active teaching staff", "modern facilities, labs and learning resources", "high graduate satisfaction and teaching ratings", "I have been offered a scholarship", "the course is accredited by a professional body", "good support services for international students"],
-  whyCountry: ["its qualifications are recognised worldwide", "it has a high-quality, well-regulated education system", "its qualifications are valued by employers in my home country", "teaching is practical and industry-focused", "it is safe and multicultural", "friends and relatives studied there and returned to good careers", "the total cost is reasonable compared with other study destinations"],
-  whyNotHome: ["this course is not available in my home country", "this specialisation is not offered locally", "local programmes take longer to complete", "places are very limited and competitive locally", "local programmes lack international recognition", "local facilities and curriculum are less up to date"],
-  shortGoal: ["return to my current employer in a more senior role", "join a leading company in my field at home", "work in the public sector in my field", "join and grow my family business", "start my own business in this field", "work as a specialist / consultant in my field"],
-  longGoal: ["become a senior manager or specialist in my field", "start and grow my own company", "lead major projects in my industry", "train and mentor others in my field", "contribute to my country's development in this field", "move into research or teaching"],
+  whyCourse: ["it builds on my previous degree", "it builds on my work experience", "it fills the skill gaps I need for my career", "it is needed for promotion in my current field", "it is an industry-recognised qualification", "I want to specialise further in this area", "I am moving my career into this field", "it is the natural next step in my academic progression", "it combines theory with practical, hands-on projects", "it covers emerging technologies used in industry today"],
+  whyUniversity: ["the course modules match my career goals", "strong industry links, placements and projects", "experienced, research-active teaching staff", "modern facilities, labs and learning resources", "high graduate satisfaction and teaching ratings", "I have been offered a scholarship", "the course is accredited by a professional body", "good support services for international students", "graduates rate it highly for teaching quality and skills development", "it is highly ranked in my discipline", "its research focuses on solving real-world problems", "it offers placement and networking opportunities with industry", "it welcomes a diverse international student community", "I can take part in university sport and student activities"],
+  whyCountry: ["its qualifications are recognised worldwide", "it has a high-quality, well-regulated education system", "its qualifications are valued by employers in my home country", "teaching is practical and industry-focused", "it is safe and multicultural", "friends and relatives studied there and returned to good careers", "the total cost is reasonable compared with other study destinations", "it is a world leader in education standards and facilities", "the city is safe, liveable and welcoming to students", "I have visited before and complied fully with my visa"],
+  whyNotHome: ["this course is not available in my home country", "this specialisation is not offered locally", "local programmes take longer to complete", "places are very limited and competitive locally", "local programmes lack international recognition", "local facilities and curriculum are less up to date", "local courses are often taught in mixed medium rather than fully in English", "studying locally gives limited international exposure", "local postgraduate courses are more theory-based than practical"],
+  shortGoal: ["return to my current employer in a more senior role", "join a leading company in my field at home", "work in the public sector in my field", "join and grow my family business", "start my own business in this field", "work as a specialist / consultant in my field", "join a leading company at home that values overseas postgraduates", "apply new skills to improve systems at my current workplace"],
+  longGoal: ["become a senior manager or specialist in my field", "start and grow my own company", "lead major projects in my industry", "train and mentor others in my field", "contribute to my country's development in this field", "move into research or teaching", "grow my current freelance / consultancy work into my own company", "build an international career while based in my home country"],
 };
 export const REFUSAL_REASONS = ["insufficient or unclear funds", "weak ties to my home country", "the purpose of my visit was not clear", "doubts that I was a genuine student", "missing or unclear documents", "the English requirement was not met", "my previous immigration history", "another reason"];
 export const REFUSAL_CHANGES = ["I now have stronger financial evidence held for the required period", "I have a new employment / promotion letter showing my ties", "I have a clear study plan and a course that matches my background", "I have submitted every required document", "I have a new English test result", "I have explained my study and work gaps with evidence", "I have stronger evidence of family and property ties"];
@@ -238,7 +238,7 @@ export function composeField(key: keyof SopInput, i: SopInput): string {
   const lastEdu = [...(i.education ?? [])].filter((e) => e.qualification).pop();
   const lastJob = [...(i.jobs ?? [])].filter((j) => j.role).sort((x, y) => (x.current ? 1 : 0) - (y.current ? 1 : 0)).pop();
   const swap = (p: string) =>
-    p.replace("my previous degree", lastEdu ? lastEdu.qualification.replace(/^(?!my |a |the )/i, "my ") : "my previous degree")
+    p.replace("my previous degree", lastEdu ? lastEdu.qualification.replace(/^(a|an|the) /i, "").replace(/^(?!my )/i, "my ") : "my previous degree")
       .replace("my work experience", lastJob ? `my experience as ${lastJob.role}${lastJob.employer ? ` at ${lastJob.employer}` : ""}` : "my work experience")
       .replace(/my home country/g, home);
   switch (key) {
@@ -328,11 +328,13 @@ export function buildSop(input: SopInput): string {
   const country = v(i.country, "destination country");
   const background = para(educationText(i), i.prevSubjects && `During my studies I focused on ${i.prevSubjects}.`, englishText(i));
   const work = workText(i);
-  const why = para(
-    `I have chosen the ${course} at ${uni} because ${v(i.whyCourse, "explain how the course builds on your studies and work")}.`,
-    i.modules && `I am particularly interested in ${i.modules}.`,
-    `${uni} stands out to me because ${v(i.whyUniversity, "reasons specific to this university")}.`,
+  const whyCourseText = para(
+    `I have chosen the ${course} because ${v(i.whyCourse, "explain how the course builds on your studies and work")}.`,
+    i.modules && `The units that interest me most are ${i.modules}, which match the skills I need for my career.`,
+    i.prevSubjects && `They build directly on what I studied before: ${i.prevSubjects}.`,
   );
+  const whyUniText = `I chose ${uni} because ${v(i.whyUniversity, "reasons specific to this university")}.`;
+  const why = para(whyCourseText, whyUniText);
   const whyCountry = para(`I chose to study in ${country} because ${v(i.whyCountry, "reasons for this country")}.`, i.whyNotHome && `A comparable programme is not available to me at home because ${i.whyNotHome}.`);
   const career = para(
     `After completing the course, I plan to return to ${homeCountryOf(i)} and ${v(i.shortGoal, "short-term career goal")}.`,
@@ -358,13 +360,14 @@ export function buildSop(input: SopInput): string {
       "Dear Sir/Madam,",
       `Statement of Purpose: ${name}`,
       `I, ${name}, write this statement of purpose in support of my application to study the ${course} at ${uni}, ${country}${i.intake ? `, starting ${i.intake}` : ""}${i.duration ? ` (${i.duration})` : ""}.`,
-      `Education (Academic Qualifications by Date)\n${para(educationText(i), i.prevSubjects && `During my studies I focused on ${i.prevSubjects}.`)}`,
+      `Education (Academic Qualifications by Date)\n${educationText(i)}`,
       englishText(i) && `English Language (IELTS / Waiver)\n${englishText(i)}`,
       work && `Work Experience\n${work}`,
       gapText(i) && `Gaps (Study and Work Gaps Explained)\n${gapText(i)}`,
       i.whyNotHome.trim() && `Why not Study in ${homeCountry}\n${i.whyNotHome.trim()}`,
       `Reasons for Choosing ${country}\n${v(i.whyCountry, "specific reasons for choosing this country")}`,
-      `Reasons for Choosing the University and Course: ${uni}, ${course}\n${why}`,
+      `Reasons for Choosing the Course: ${course}\n${whyCourseText}`,
+      `Reasons for Choosing the University: ${uni}\n${whyUniText}`,
       `Future Career Plans and Returning to ${homeCountry}\n${career}`,
       travel && `Travel History (Immigration History)\n${travel}`,
       (fam || i.assets) && `Family Background\n${para(fam, i.assets && `I also have ${i.assets}, which I will return to.`)}`,
@@ -405,7 +408,8 @@ export function buildSop(input: SopInput): string {
     `Introduction\nMy name is ${name} and I am applying to study the ${course} at ${uni}. This statement explains my academic background, my reasons for choosing this course, university and country, and my plans after graduation.`,
     `Academic background\n${background}`,
     work && `Work experience\n${work}`,
-    `Why this course and university\n${why}`,
+    `Why this course\n${whyCourseText}`,
+    `Why ${uni}\n${whyUniText}`,
     `Why ${country}\n${whyCountry}`,
     `Career goals\n${career}`,
     `Funding\n${money}`,
@@ -444,3 +448,43 @@ export function buildWorkLetter(i: SopInput): string {
 export function wordCount(s: string) {
   return s.trim() ? s.trim().split(/\s+/).length : 0;
 }
+
+/**
+ * Example SOP (structure and reasoning based on a real, successful-style Master of Computer Science SOP for Australia).
+ * The applicant, address and employers are fictional so no personal data is published.
+ */
+export const EXAMPLE_SOP: SopInput = {
+  ...EMPTY_SOP,
+  applicantType: "student", style: "full", autoWrite: true,
+  fullName: "Nimal Silva", nationality: "Sri Lanka", homeCity: "Maharagama, Colombo, Sri Lanka", age: "",
+  countryCode: "AU", country: "Australia", level: "Master of", course: "Computer Science", university: "Edith Cowan University",
+  universityAddress: "Joondalup Campus, 270 Joondalup Drive, Joondalup, Western Australia 6027", intake: "February 2027", duration: "2 years",
+  education: [
+    { ...EMPTY_EDU, qualification: "my GCE O/L (Ordinary Level)", institution: "a national school in Colombo", to: "2008-12", result: "Distinctions and Credits", certificate: true },
+    { ...EMPTY_EDU, qualification: "my GCE A/L (Advanced Level) in the Science stream", institution: "a leading college in Colombo", to: "2011-08", certificate: true },
+    { ...EMPTY_EDU, qualification: "the Pearson BTEC Level 5 Higher National Diploma in Computing", institution: "a private higher education institute", from: "2013-01", to: "2014-12", certificate: true },
+    { ...EMPTY_EDU, qualification: "a BSc (Hons) Computing top-up degree", institution: "a UK university (local delivery partner)", from: "2015-01", to: "2016-01", result: "First Class Honours", certificate: true },
+  ],
+  jobs: [
+    { ...EMPTY_JOB, role: "IT Assistant", employer: "a sports goods company", from: "2011-09", to: "2013-12", duties: "maintained the accounting system, entered source documents and produced monthly reports", letter: true },
+    { ...EMPTY_JOB, role: "Banking Assistant (IT systems)", employer: "a national bank", from: "2014-01", current: true, duties: "run a module of the bank's core system, troubleshoot system issues, produce management reports and train junior staff", letter: true },
+    { ...EMPTY_JOB, role: "freelance IT consultant", employer: "a packaging company", from: "2016-06", current: true, duties: "maintain and upgrade the company's software and hardware and carry out an annual IT quality audit", letter: true },
+  ],
+  englishTest: "MOI waiver (Medium of Instruction letter)",
+  prevSubjects: "software development, databases, networking and systems analysis",
+  modules: "Emerging Technologies and Innovation (core), Android App Development, Systems Analysis, Object Modelling and Professional Programming Practice",
+  picks: {
+    whyCourse: ["it is the natural next step in my academic progression", "it builds on my previous degree", "it builds on my work experience", "it covers emerging technologies used in industry today"],
+    whyUniversity: ["the course modules match my career goals", "graduates rate it highly for teaching quality and skills development", "its research focuses on solving real-world problems", "it offers placement and networking opportunities with industry", "I can take part in university sport and student activities"],
+    whyCountry: ["its qualifications are recognised worldwide", "its qualifications are valued by employers in my home country", "friends and relatives studied there and returned to good careers", "the city is safe, liveable and welcoming to students"],
+    whyNotHome: ["this specialisation is not offered locally", "local programmes take longer to complete", "local courses are often taught in mixed medium rather than fully in English", "studying locally gives limited international exposure"],
+    shortGoal: ["join a leading company at home that values overseas postgraduates"],
+    longGoal: ["grow my current freelance / consultancy work into my own company"],
+  },
+  jobProspects: "leading software companies in Sri Lanka recruit postgraduates with up-to-date skills for senior engineering roles",
+  funding: "my parents' savings", sponsor: "Both parents", fundsAmount: "",
+  family: { father: "Retired bank officer", mother: "Business owner", brothers: "1", sisters: "1", position: "eldest son", marital: "Single", children: "", spouseJob: "", relativesAbroad: "No relatives in the destination country", livesWith: "my parents" },
+  trips: [{ country: "Thailand", year: "2016", purpose: "business" }, { country: "France", year: "2018", purpose: "tourism / holiday" }, { country: "Australia", year: "2018", purpose: "tourism / holiday" }],
+  gaps: "Between my studies I was in continuous full-time employment, which my employment letters confirm, while also coaching school sports part time.",
+  achievements: "I represented my school in cricket and rugby, was a member of the debating team, and coach school sports teams part time",
+};
