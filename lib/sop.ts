@@ -30,6 +30,7 @@ export const REASON_OPTIONS: Partial<Record<keyof SopInput, string[]>> = {
   whyCountry: ["its qualifications are recognised worldwide", "it has a high-quality, well-regulated education system", "its qualifications are valued by employers in my home country", "teaching is practical and industry-focused", "it is safe and multicultural", "friends and relatives studied there and returned to good careers", "the total cost is reasonable compared with other study destinations", "it is a world leader in education standards and facilities", "the city is safe, liveable and welcoming to students", "I have visited before and complied fully with my visa"],
   whyNotHome: ["this course is not available in my home country", "this specialisation is not offered locally", "local programmes take longer to complete", "places are very limited and competitive locally", "local programmes lack international recognition", "local facilities and curriculum are less up to date", "local courses are often taught in mixed medium rather than fully in English", "studying locally gives limited international exposure", "local postgraduate courses are more theory-based than practical"],
   shortGoal: ["return to my current employer in a more senior role", "join a leading company in my field at home", "work in the public sector in my field", "join and grow my family business", "start my own business in this field", "work as a specialist / consultant in my field", "join a leading company at home that values overseas postgraduates", "apply new skills to improve systems at my current workplace"],
+  whyEmployer: ["my experience matches the duties of this job", "I hold the qualification the role requires", "I have worked with the same tools and systems", "I have led teams and trained staff", "I have client-facing and international experience", "I meet the English language requirement"],
   longGoal: ["become a senior manager or specialist in my field", "start and grow my own company", "lead major projects in my industry", "train and mentor others in my field", "contribute to my country's development in this field", "move into research or teaching", "grow my current freelance / consultancy work into my own company", "build an international career while based in my home country"],
 };
 export const REFUSAL_REASONS = ["insufficient or unclear funds", "weak ties to my home country", "the purpose of my visit was not clear", "doubts that I was a genuine student", "missing or unclear documents", "the English requirement was not met", "my previous immigration history", "another reason"];
@@ -290,6 +291,7 @@ const joinList = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", "
 /** 150+ word answer for one question, from the ticked reasons and the applicant's details. */
 export function composeField(key: keyof SopInput, i: SopInput): string {
   if (key === "refusals") return composeRefusals(i);
+  if (key === "whyEmployer") return composeSuited(i);
   return composeLong(key, i);
 }
 
@@ -475,7 +477,7 @@ export function buildWorkLetter(i: SopInput): string {
     `I am applying for a work visa to take up the position of ${role} with ${employer} in ${country}${i.destStart ? `, starting ${i.destStart}` : ""}. ${para(i.destContract && `The contract is ${/permanent/i.test(i.destContract) ? "permanent" : `for ${i.destContract.toLowerCase()}`}`, i.destSalary && `with a salary of ${i.destSalary}`)}${i.destContract || i.destSalary ? "." : ""}${i.sponsorRef ? ` My sponsorship / permit reference is ${i.sponsorRef}.` : ""}`,
     `My experience\n${work || "[Add your jobs in the “Work experience” list]"}`,
     `My qualifications\n${para(education, english)}`,
-    `Why I am suited to this role\n${v(i.whyEmployer, "explain how your skills and experience match the job")}`,
+    `Why I am suited to this role\n${i.whyEmployer.trim() || composeSuited(i)}`,
     para(familyText(i), i.assets && `At home I have ${i.assets}.`, i.shortGoal && `My plans: ${i.shortGoal}.`, travel, gapText(i), i.refusals && (/^In /.test(i.refusals) ? i.refusals : `I would like to disclose a previous visa refusal: ${i.refusals}.`), i.extra) || "",
     `I confirm that the information in this application is true, and I will comply with all the conditions of my visa.\n\nEnclosed: passport, signed employment contract / job offer, sponsorship or work permit document, qualification certificates, experience letters, English test result${i.travelHistory ? ", previous visas" : ""}.`,
     `Yours faithfully,\n\n\n${name}`,
@@ -576,3 +578,30 @@ export const FIELD_EXAMPLES: Partial<Record<keyof SopInput, string>> = {
   extra: "Anything else the officer should know",
   afterSchool: "After school I coached junior cricket and rugby at my college and worked in sales of sports equipment, which delayed my higher studies.",
 };
+
+/** "Why I am suited to this role" for the work visa cover letter, from the applicant's own jobs, qualifications and ticks. */
+export function composeSuited(i: SopInput): string {
+  const role = i.destRole.trim() || "[job title]";
+  const employer = i.destEmployer.trim() || "[employer]";
+  const jobs = [...(i.jobs ?? [])].filter((j) => j.role).sort((a, b) => (a.current ? 1 : 0) - (b.current ? 1 : 0) || (b.from || "").localeCompare(a.from || ""));
+  const main = jobs.filter((j) => j.current).sort((a, b) => (a.from || "9999").localeCompare(b.from || "9999"))[0] ?? jobs[0];
+  const others = jobs.filter((j) => j !== main).slice(0, 2);
+  const edu = [...(i.education ?? [])].filter((e) => e.qualification && !/primary|secondary|o\/l|a\/l|ordinary|advanced level|high school/i.test(e.qualification)).sort((a, b) => (a.to || "").localeCompare(b.to || "")).pop();
+  const picks = new Set(i.picks?.whyEmployer ?? []);
+  const lc = (x: string) => x.trim().replace(/^./, (c) => c.toLowerCase()).replace(/\.$/, "");
+  const out: string[] = [`I am well suited to the position of ${role} at ${employer}.`];
+  if (main) {
+    const since = main.current ? (main.from ? `since ${monthText(main.from)}` : "for several years") : `from ${monthText(main.from) || "[start]"} to ${monthText(main.to) || "[end]"}`;
+    out.push(`I have worked as ${main.role.trim().replace(/^(a|an) /i, "")}${main.employer ? ` at ${main.employer.trim()}` : ""} ${since}${main.duties ? `, where I ${lc(main.duties)}` : ""}.`);
+  } else out.push("[Describe your most relevant job: role, employer, dates and main duties.]");
+  if (others.length) out.push(`Before that, I worked as ${others.map((j) => `${j.role.trim().replace(/^(a|an) /i, "")}${j.employer ? ` at ${j.employer.trim()}` : ""}`).join(" and as ")}, which broadened my practical experience.`);
+  if (picks.has("my experience matches the duties of this job") || !picks.size) out.push(`These responsibilities closely match the duties of the ${role} role described in my job offer, so I will be able to contribute from my first day.`);
+  if (edu) out.push(`I hold ${edu.qualification.trim().replace(/^(?!a |an |the |my )/i, "a ")} from ${(edu.institution.trim() || "[institution]").replace(/^(University|College|Institute) of /i, (m) => `the ${m}`)}${edu.result ? `, with ${edu.result}` : ""}${picks.has("I hold the qualification the role requires") ? `, which meets the qualification requirement for this position` : `, which gives me the knowledge this role requires`}.`);
+  if (picks.has("I have worked with the same tools and systems")) out.push(`I have hands-on experience with the same kinds of tools, systems and processes that ${employer} uses, so I will need minimal training.`);
+  if (picks.has("I have led teams and trained staff")) out.push("I have supervised and trained colleagues, so I can support the team as well as deliver my own work.");
+  if (picks.has("I have client-facing and international experience")) out.push("I have worked directly with clients and in international settings, which has developed my communication and professional skills.");
+  const eng = /waiver|moi|not required/i.test(i.englishTest) ? "I meet the English language requirement through my English-medium education." : i.englishTest && !/not taken/i.test(i.englishTest) ? `I meet the English language requirement with my ${i.englishTest}${i.englishScore ? ` result of ${i.englishScore}` : ""}.` : "";
+  if (eng && (picks.has("I meet the English language requirement") || !picks.size)) out.push(eng);
+  out.push(`${employer} has assessed my skills and experience and offered me this position${i.sponsorRef.trim() ? `, supported by sponsorship reference ${i.sponsorRef.trim()}` : ""}. I am confident that I can perform the role to a high standard and comply fully with the conditions of my visa.`);
+  return out.join(" ");
+}
