@@ -8,10 +8,12 @@ import { VISA_TYPES, visaTypeName } from "@/lib/requirements";
 import type { Application, ApplicationStatus, CustomRequirement, SupportDoc } from "@/lib/types";
 import { Field, PasswordInput } from "@/components/ui";
 import { Registrations } from "./Registrations";
+import { AdminTools } from "./AdminTools";
 
 type Me = { id: string; name: string; email: string; phone: string };
 type Config = { ai: boolean; email: boolean; sms: boolean; storage: "postgres" | "redis" | "file" | "ephemeral" };
 const TABS = [
+  ["tools", "🧰 All tools"],
   ["regs", "🪪 Registrations"],
   ["apps", "📥 Applications"],
   ["reqs", "📋 Required documents"],
@@ -41,7 +43,7 @@ export function Dashboard() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [cfg, setCfg] = useState<Config | null>(null);
-  const [tab, setTab] = useState<Tab>("regs");
+  const [tab, setTab] = useState<Tab>("tools");
 
   useEffect(() => {
     fetch("/api/admin/me").then(async (r) => {
@@ -87,6 +89,7 @@ export function Dashboard() {
       </div>
 
       <div className="mt-6">
+        {tab === "tools" && <AdminTools />}
         {tab === "regs" && <Registrations />}
         {tab === "apps" && <Applications />}
         {tab === "reqs" && <Requirements />}
