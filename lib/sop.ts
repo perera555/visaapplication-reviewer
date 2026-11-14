@@ -1,3 +1,4 @@
+import { composeLong, composeRefusals } from "./sopAuto";
 // Statement of Purpose / Genuine Student / Study Plan writer. Uses ONLY the facts the applicant gives;
 // anything missing stays as a [placeholder] so nothing is invented.
 
@@ -225,50 +226,20 @@ function familyText(i: SopInput) {
   return parts.join(" ");
 }
 
+const full = (x: string) => /^[A-Z]/.test((x ?? "").trim());
 const joinList = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs[0] ?? "");
 
 /** Text for one field from the ticked reasons (falls back to good default wording). */
+/** 150+ word answer for one question, from the ticked reasons and the applicant's details. */
 export function composeField(key: keyof SopInput, i: SopInput): string {
-  const picks = (i.picks?.[key] ?? []).filter(Boolean);
-  const a = auto(i);
-  const home = homeCountryOf(i);
-  const country = i.country || "the destination country";
-  const course = `${i.level} ${i.course}`.replace(/\s+/g, " ").trim() || "this course";
-  const uni = i.university || "this university";
-  const lastEdu = [...(i.education ?? [])].filter((e) => e.qualification).pop();
-  const lastJob = [...(i.jobs ?? [])].filter((j) => j.role).sort((x, y) => (x.current ? 1 : 0) - (y.current ? 1 : 0)).pop();
-  const swap = (p: string) =>
-    p.replace("my previous degree", lastEdu ? lastEdu.qualification.replace(/^(a|an|the) /i, "").replace(/^(?!my )/i, "my ") : "my previous degree")
-      .replace("my work experience", lastJob ? `my experience as ${lastJob.role}${lastJob.employer ? ` at ${lastJob.employer}` : ""}` : "my work experience")
-      .replace(/my home country/g, home);
-  switch (key) {
-    case "whyCourse": {
-      if (!picks.length) return a.whyCourse;
-      const items = picks.map(swap);
-      const builds = items.filter((p) => p.startsWith("it builds on ")).map((p) => p.replace("it builds on ", ""));
-      const rest = items.filter((p) => !p.startsWith("it builds on ")).map((p) => p.replace(/^it /, ""));
-      const parts = [builds.length ? `builds on ${joinList(builds)}` : "", ...rest.filter((p) => !/^I /.test(p))].filter(Boolean);
-      const mine = rest.filter((p) => /^I /.test(p));
-      return [parts.length ? `it ${joinList(parts)}` : "", ...mine.map((p) => p.replace(/^I /, "I "))].filter(Boolean).join(", and ");
-    }
-    case "whyUniversity":
-      return picks.length ? `${joinList(picks.map(swap))}` : a.whyUniversity;
-    case "whyCountry":
-      return picks.length ? `I chose ${country} because ${joinList(picks.map(swap))}.` : a.whyCountry;
-    case "whyNotHome":
-      return picks.length ? `I considered studying in ${home}, but ${joinList(picks.map(swap))}. Studying the ${course} at ${uni} gives me what I cannot get by studying locally.` : a.whyNotHome;
-    case "shortGoal":
-      return picks.length ? `${joinList(picks.map(swap))}, using the skills gained from the ${course}` : a.shortGoal;
-    case "longGoal":
-      return picks.length ? joinList(picks.map(swap)) : a.longGoal;
-    case "refusals":
-      return refusalText(i);
-    default:
-      return "";
-  }
+  if (key === "refusals") return composeRefusals(i);
+  return composeLong(key, i);
 }
 
 function refusalText(i: SopInput) {
+  return composeRefusals(i);
+}
+function refusalTextShort(i: SopInput) {
   const list = (i.refusalList ?? []).filter((r) => r.country || r.reason);
   return list
     .map((r) => `In ${r.year || "[year]"}, my ${r.visaType ? ({ "Visit / Tourist": "visitor", Work: "work", Student: "student", Business: "business", Family: "family", Transit: "transit" } as Record<string, string>)[r.visaType] ?? r.visaType.toLowerCase() : ""}${r.visaType ? " " : ""}visa application to ${/^(United|Netherlands|Philippines|Czech|Maldives|Bahamas|Gambia)/.test(r.country) ? "the " : ""}${r.country || "[country]"} was refused because of ${r.reason || "[reason]"}.${r.changes.length ? ` Since then, ${joinList(r.changes.map((c) => c.replace(/^I /, "I ")))}.` : ""} I have declared this refusal and addressed it fully in this application.`)
@@ -328,17 +299,17 @@ export function buildSop(input: SopInput): string {
   const country = v(i.country, "destination country");
   const background = para(educationText(i), i.prevSubjects && `During my studies I focused on ${i.prevSubjects}.`, englishText(i));
   const work = workText(i);
-  const whyCourseText = para(
+  const whyCourseText = full(i.whyCourse) ? i.whyCourse.trim() : para(
     `I have chosen the ${course} because ${v(i.whyCourse, "explain how the course builds on your studies and work")}.`,
     i.modules && `The units that interest me most are ${i.modules}, which match the skills I need for my career.`,
     i.prevSubjects && `They build directly on what I studied before: ${i.prevSubjects}.`,
   );
-  const whyUniText = `I chose ${uni} because ${v(i.whyUniversity, "reasons specific to this university")}.`;
+  const whyUniText = full(i.whyUniversity) ? i.whyUniversity.trim() : `I chose ${uni} because ${v(i.whyUniversity, "reasons specific to this university")}.`;
   const why = para(whyCourseText, whyUniText);
-  const whyCountry = para(`I chose to study in ${country} because ${v(i.whyCountry, "reasons for this country")}.`, i.whyNotHome && `A comparable programme is not available to me at home because ${i.whyNotHome}.`);
+  const whyCountry = para(full(i.whyCountry) ? i.whyCountry.trim() : `I chose to study in ${country} because ${v(i.whyCountry, "reasons for this country")}.`, i.whyNotHome && (full(i.whyNotHome) ? i.whyNotHome.trim() : `A comparable programme is not available to me at home because ${i.whyNotHome}.`));
   const career = para(
-    `After completing the course, I plan to return to ${homeCountryOf(i)} and ${v(i.shortGoal, "short-term career goal")}.`,
-    i.longGoal && `In the long term, I aim to ${i.longGoal}.`,
+    full(i.shortGoal) ? i.shortGoal.trim() : `After completing the course, I plan to return to ${homeCountryOf(i)} and ${v(i.shortGoal, "short-term career goal")}.`,
+    i.longGoal && (full(i.longGoal) ? i.longGoal.trim() : `In the long term, I aim to ${i.longGoal}.`),
     i.jobProspects && `There are strong opportunities for this qualification at home: ${i.jobProspects}.`,
   );
   const money = para(
