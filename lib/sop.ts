@@ -1,4 +1,5 @@
-import { composeLong, composeRefusals } from "./sopAuto";
+import { composeCareer } from "./sopCareer";
+import { complianceLine, composeLong, composeRefusals } from "./sopAuto";
 // Statement of Purpose / Genuine Student / Study Plan writer. Uses ONLY the facts the applicant gives;
 // anything missing stays as a [placeholder] so nothing is invented.
 
@@ -57,6 +58,8 @@ export type SopInput = {
   countryCode: string;
   level: string; course: string; university: string; universityAddress: string; intake: string; duration: string;
   finalProject: string;
+  targetCompanies: string[]; nicheCompanies: string[];
+  salaryCurrency: string; salaryPeriod: string; salaryLocal: string; salaryOverseasMin: string; salaryOverseasMax: string; salarySource: string;
   prevDegree: string; prevInstitution: string; prevYear: string; prevResult: string; prevSubjects: string;
   englishTest: string; englishScore: string;
   workExperience: string; // free text: role, employer, years, duties
@@ -78,6 +81,7 @@ export const EMPTY_SOP: SopInput = {
   education: [], jobs: [], travelHistory: "",
   fullName: "", nationality: "", homeCity: "", age: "", country: "", countryCode: "",
   level: "", course: "", university: "", universityAddress: "", intake: "", duration: "", finalProject: "",
+  targetCompanies: [], nicheCompanies: [], salaryCurrency: "", salaryPeriod: "per month", salaryLocal: "", salaryOverseasMin: "", salaryOverseasMax: "", salarySource: "",
   prevDegree: "", prevInstitution: "", prevYear: "", prevResult: "", prevSubjects: "",
   englishTest: "", englishScore: "", workExperience: "",
   whyCourse: "", whyUniversity: "", whyCountry: "", whyNotHome: "", modules: "",
@@ -300,7 +304,7 @@ export function buildSop(input: SopInput): string {
   const name = v(i.fullName, "Your full name");
   const course = `${v(i.level, "level")} ${v(i.course, "course name")}`.replace(/\s+/g, " ");
   const uni = v(i.university, "university");
-  const country = v(i.country, "destination country");
+  const country = /^(United|Netherlands|Philippines|Czech|Maldives|Bahamas|Gambia)/.test(i.country) ? `the ${i.country}` : v(i.country, "destination country");
   const background = para(educationText(i), i.prevSubjects && `During my studies I focused on ${i.prevSubjects}.`, englishText(i));
   const work = workText(i);
   const whyCourseText = full(i.whyCourse) ? i.whyCourse.trim() : para(
@@ -311,17 +315,15 @@ export function buildSop(input: SopInput): string {
   const whyUniText = full(i.whyUniversity) ? i.whyUniversity.trim() : `I chose ${uni} because ${v(i.whyUniversity, "reasons specific to this university")}.`;
   const why = para(whyCourseText, whyUniText);
   const whyCountry = para(full(i.whyCountry) ? i.whyCountry.trim() : `I chose to study in ${country} because ${v(i.whyCountry, "reasons for this country")}.`, i.whyNotHome && (full(i.whyNotHome) ? i.whyNotHome.trim() : `A comparable programme is not available to me at home because ${i.whyNotHome}.`));
-  const career = para(
-    full(i.shortGoal) ? i.shortGoal.trim() : `After completing the course, I plan to return to ${homeCountryOf(i)} and ${v(i.shortGoal, "short-term career goal")}.`,
-    i.longGoal && (full(i.longGoal) ? i.longGoal.trim() : `In the long term, I aim to ${i.longGoal}.`),
-    i.jobProspects && `There are strong opportunities for this qualification at home: ${i.jobProspects}.`,
-  );
+  const shortText = full(i.shortGoal) ? i.shortGoal.trim() : `After completing the course, I plan to return to ${homeCountryOf(i)} and ${v(i.shortGoal, "short-term career goal")}.`;
+  const longText = i.longGoal ? (full(i.longGoal) ? i.longGoal.trim() : `In the long term, I aim to ${i.longGoal}.`) : "";
+  const career = composeCareer(i, shortText, longText);
   const money = para(
     `My studies will be funded by ${v(i.funding, "source of funds")}${i.sponsor && !/self/i.test(i.sponsor) ? ` (sponsor: my ${/both parents/i.test(i.sponsor) ? "parents" : i.sponsor.toLowerCase()})` : ""}${i.fundsAmount ? `, with ${i.fundsAmount} available` : ""}.`,
     "The financial documents enclosed show that these funds are genuinely available to me.",
   );
   const fam = familyText(i);
-  const ties = para(fam, i.assets && `I also have ${i.assets}, which I will return to.`, "I fully intend to comply with all visa conditions and return home after my studies.");
+  const ties = para(fam, i.assets && `I also have ${i.assets}, which I will return to.`, complianceLine(i, homeCountryOf(i)));
   const travel = travelText(i);
   const other = para(gapText(i), i.refusals && (/^In /.test(i.refusals) ? i.refusals : `I would like to disclose a previous visa refusal: ${i.refusals}.`), i.achievements && `Outside my studies, ${i.achievements}.`, i.extra);
 
@@ -348,7 +350,7 @@ export function buildSop(input: SopInput): string {
       (fam || i.assets) && `Family Background\n${para(fam, i.assets && `I also have ${i.assets}, which I will return to.`)}`,
       `Financial Support\n${money}`,
       para(i.refusals && (/^In /.test(i.refusals) ? i.refusals : `I would like to disclose a previous visa refusal: ${i.refusals}.`), i.achievements && `Outside my studies, ${i.achievements}.`, i.extra) && `Additional information\n${para(i.refusals && (/^In /.test(i.refusals) ? i.refusals : `I would like to disclose a previous visa refusal: ${i.refusals}.`), i.achievements && `Outside my studies, ${i.achievements}.`, i.extra)}`,
-      `I fully intend to comply with all visa conditions and to return to ${homeCountry} on completion of my studies. I would be grateful if you would consider my application favourably.`,
+      `${complianceLine(i, homeCountry)} I would be grateful if you would consider my application favourably.`,
       `Yours sincerely,\n\n\n${name}\n(Applicant)`,
     ].filter(Boolean).join("\n\n");
   }
@@ -456,7 +458,9 @@ export const EXAMPLE_SOP: SopInput = {
     shortGoal: ["join a leading company at home that values overseas postgraduates"],
     longGoal: ["grow my current freelance / consultancy work into my own company"],
   },
-  jobProspects: "leading software companies in Sri Lanka recruit postgraduates with up-to-date skills for senior engineering roles",
+  jobProspects: "",
+  targetCompanies: ["Virtusa", "99X", "WSO2", "MillenniumIT (LSEG)"], nicheCompanies: ["a local fintech start-up"],
+  salaryCurrency: "LKR", salaryPeriod: "per month", salaryLocal: "[amount]", salaryOverseasMin: "[amount]", salaryOverseasMax: "[amount]", salarySource: "[job adverts / salary survey, year]",
   funding: "my parents' savings", sponsor: "Both parents", fundsAmount: "",
   family: { father: "Retired bank officer", mother: "Business owner", brothers: "1", sisters: "1", position: "eldest son", marital: "Single", children: "", spouseJob: "", relativesAbroad: "No relatives in the destination country", livesWith: "my parents" },
   trips: [{ country: "Thailand", year: "2016", purpose: "business" }, { country: "France", year: "2018", purpose: "tourism / holiday" }, { country: "Australia", year: "2018", purpose: "tourism / holiday" }],

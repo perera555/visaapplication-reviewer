@@ -19,7 +19,7 @@ export function sopContext(i: SopInput): Ctx {
     course: `${i.level} ${i.course}`.replace(/\s+/g, " ").trim() || "this course",
     level: /master|mba|graduate|postgraduate|phd|doctor/i.test(i.level) ? "postgraduate" : "higher",
     uni: i.university.trim() || "this university",
-    country: i.country.trim() || "the destination country",
+    country: /^(United|Netherlands|Philippines|Czech|Maldives|Bahamas|Gambia|Dominican|Central African|Comoros|Marshall|Solomon)/.test(i.country.trim()) ? `the ${i.country.trim()}` : i.country.trim() || "the destination country",
     home,
     lastEdu: edu ? edu.qualification.trim().replace(/^(a|an|the) /i, "").replace(/^(?!my )/i, "my ") : "my previous studies",
     prevSubjects: i.prevSubjects.trim(),
@@ -106,6 +106,60 @@ const EXPAND: Record<string, Record<string, Expander>> = {
   },
 };
 
+/** Destination-specific reasons for "Why this country" (shown first; also used for padding). */
+export const COUNTRY_REASONS: Record<string, Record<string, Expander>> = {
+  AU: {
+    "Australian providers are regulated by TEQSA and the ESOS Act": () => `Australian education providers are regulated by TEQSA and the ESOS Act, which set high quality standards and give international students strong legal protection.`,
+    "Australian qualifications follow the internationally recognised AQF": (c) => `Australian qualifications follow the Australian Qualifications Framework, which is recognised internationally and makes my degree easy for employers in ${c.home} to understand and value.`,
+    "Australia has close links with Asian economies and industries": (c) => `Australia has close economic and industry links with Asia, so what I learn will be directly relevant to the market in ${c.home}.`,
+  },
+  GB: {
+    "UK master's degrees usually take one year": () => `Most UK master's degrees take one year, so I can gain an advanced qualification quickly and return to my career sooner, with less time away from work and family.`,
+    "UK universities have a long history of academic excellence": () => `UK universities have a long history of academic excellence and consistently rank among the best in the world.`,
+    "UK qualifications are highly respected by employers at home": (c) => `UK qualifications are highly respected by employers in ${c.home}, and many leaders in my field hold UK degrees.`,
+  },
+  US: {
+    "US universities lead the world in research and innovation": () => `American universities lead the world in research and innovation, and studying there will expose me to the newest ideas and technologies in my field.`,
+    "US programmes are flexible, with electives matched to my goals": () => `US programmes are flexible, allowing me to combine core study with electives that match my career goals exactly.`,
+    "US degrees are highly valued by employers at home": (c) => `Degrees from the United States are highly valued by employers in ${c.home}, which will strengthen my position when I return.`,
+  },
+  CA: {
+    "Canadian programmes combine academics with practical, co-op style learning": () => `Canadian programmes combine strong academics with practical, applied learning, so I will graduate with skills I can use straight away.`,
+    "Canada is safe, welcoming and multicultural": () => `Canada is safe, welcoming and multicultural, and its institutions provide excellent support for international students.`,
+    "Canadian credentials are recognised by employers at home": (c) => `Canadian credentials are well recognised by employers in ${c.home}.`,
+  },
+  NZ: {
+    "New Zealand education is quality-assured by NZQA": () => `New Zealand's education system is quality-assured by NZQA, and providers follow a strict code of pastoral care for international students.`,
+    "small classes and close contact with lecturers": () => `Classes in New Zealand are relatively small, giving me close contact with lecturers and personalised academic support.`,
+  },
+  IE: {
+    "Ireland hosts the European headquarters of many global companies": () => `Ireland hosts the European headquarters of many global technology and pharmaceutical companies, so courses are closely linked to industry.`,
+    "Irish degrees are recognised across Europe and beyond": () => `Irish degrees are recognised across Europe and internationally, and the teaching is in English.`,
+  },
+  DE: {
+    "German public universities offer research-led education with low or no tuition": () => `German public universities offer high-quality, research-led education with low or no tuition fees, which makes world-class study affordable for my family.`,
+    "Germany is a world leader in engineering and technology": () => `Germany is a world leader in engineering, technology and applied research, which is directly relevant to my field.`,
+  },
+};
+
+/** Options to tick for a question; "Why this country" puts the destination's own reasons first. */
+export function reasonOptions(key: string, i: SopInput, generic: string[]): string[] {
+  if (key !== "whyCountry") return generic;
+  return [...Object.keys(COUNTRY_REASONS[i.countryCode] ?? {}), ...generic];
+}
+
+/** Closing compliance sentence for the destination's student visa. */
+export function complianceLine(i: SopInput, home: string): string {
+  switch (i.countryCode) {
+    case "AU": return `I will comply with all the conditions of my Student visa (subclass 500), including maintaining my enrolment, attendance and health cover, and I will return to ${home} when my studies are complete.`;
+    case "GB": return `I will comply with all the conditions of my UK Student visa, including the limits on work and study, and I will return to ${home} when my course ends.`;
+    case "US": return `I understand that the F-1 visa is for study only, and I will return to ${home} on completion of my programme.`;
+    case "CA": return `I will respect all the conditions of my study permit and leave Canada at the end of my authorised stay to return to ${home}.`;
+    case "NZ": return `I will meet all the conditions of my student visa and return to ${home} when my studies are complete.`;
+    default: return `I fully intend to comply with all visa conditions and to return to ${home} on completion of my studies.`;
+  }
+}
+
 /** Neutral reasons used only to reach 150 words (no personal factual claims). */
 const PAD: Record<string, string[]> = {
   whyCourse: ["it is the natural next step in my academic progression", "it combines theory with practical, hands-on projects", "I want to specialise further in this area", "it is an industry-recognised qualification", "it fills the skill gaps I need for my career"],
@@ -129,20 +183,21 @@ const OUTRO: Record<string, (c: Ctx) => string> = {
   whyUniversity: (c) => `For these reasons, ${c.uni} is the best place for me to complete this qualification.`,
   whyCountry: (c) => `Together, these factors make ${c.country} the most suitable destination for my studies.`,
   whyNotHome: (c) => `Studying the ${c.course} at ${c.uni} gives me what I cannot get by studying locally, and I will bring these benefits back to ${c.home}.`,
-  shortGoal: (c) => `${c.role ? `The qualification, combined with my experience as ${c.role}, will make me a strong candidate for these roles. ` : ""}My family, my career and my future are in ${c.home}, and that is where I will use what I learn.`,
+  shortGoal: (c) => (c.role ? `The qualification, combined with my experience as ${c.role}, will make me a strong candidate for these roles.` : ""),
   longGoal: () => ``,
 };
 
 /** 150+ word explanation for one question. */
 export function composeLong(key: string, i: SopInput): string {
   const c = sopContext(i);
-  const ex = EXPAND[key];
+  const ex = key === "whyCountry" ? { ...EXPAND.whyCountry, ...(COUNTRY_REASONS[i.countryCode] ?? {}) } : EXPAND[key];
   if (!ex) return "";
   const picked = (i.picks?.[key] ?? []).filter((p) => ex[p]);
   const parts: string[] = [INTRO[key]?.(c) ?? "", ...picked.map((p) => ex[p](c))];
-  const out = () => [...parts, OUTRO[key]?.(c) ?? ""].filter(Boolean).join(" ");
-  const target = minWords(i);
-  for (const p of PAD[key] ?? []) {
+  const out = () => [...parts, OUTRO[key]?.(c) ?? ""].filter(Boolean).join(" ").replace(/(^|[.!?]\s+)the (United|Netherlands|Philippines|Czech|Maldives|Bahamas|Gambia)/g, "$1The $2");
+  const target = key === "shortGoal" || key === "longGoal" ? 0 : minWords(i);
+  const pads = key === "whyCountry" ? [...Object.keys(COUNTRY_REASONS[i.countryCode] ?? {}), ...(PAD.whyCountry ?? [])] : PAD[key] ?? [];
+  for (const p of pads) {
     if (words(out()) >= target) break;
     if (!picked.includes(p) && ex[p]) parts.push(ex[p](c));
   }

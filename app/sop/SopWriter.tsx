@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { COUNTRIES, flag } from "@/lib/countries";
 import { suggestSubjects } from "@/lib/sop";
+import { currencyOf, suggestCompanies } from "@/lib/sopCareer";
+import { reasonOptions } from "@/lib/sopAuto";
 import { EXAMPLE_SOP, EMPTY_FAMILY, FAMILY_OPTIONS, REASON_OPTIONS, REFUSAL_CHANGES, REFUSAL_REASONS, TRIP_PURPOSES, composeField, type Family, type RefusalEntry, type TripEntry } from "@/lib/sop";
 import { EMPTY_EDU, EMPTY_JOB, EMPTY_SOP, QUALIFICATION_OPTIONS, SOP_FIELDS, WORK_FIELDS, buildSop, findGaps, sopFormat, wordCount, type EduEntry, type JobEntry, type SopInput } from "@/lib/sop";
 import { extractDetails } from "@/lib/extractDetails";
@@ -216,6 +218,7 @@ export function SopWriter() {
           {sections.map((sec) => (
             <section key={sec.section}>
               <h3 className="label">{sec.section}</h3>
+              {sec.section.startsWith("Career") && !worker && <CareerMarket s={s} update={(p) => { setEdited(null); setS((x) => ({ ...x, ...p })); }} />}
               <div className="grid gap-3 sm:grid-cols-2">
                 {sec.fields.map(([k, label, type, options]) => {
                   const opts = type === "country" ? COUNTRIES.map((c) => c.name) : options ?? [];
@@ -251,7 +254,7 @@ export function SopWriter() {
                           <div className="mb-2 rounded-xl border border-indigo-100 bg-indigo-50/40 p-2">
                             <div className="text-[11px] font-semibold text-slate-500">Tick what applies to you:</div>
                             <div className="mt-1 flex flex-wrap gap-1.5">
-                              {REASON_OPTIONS[k]!.map((o) => {
+                              {reasonOptions(k, s, REASON_OPTIONS[k]!).map((o) => {
                                 const on = (s.picks?.[k] ?? []).includes(o);
                                 return (
                                   <button type="button" key={o} onClick={() => { setEdited(null); setS((x) => ({ ...x, picks: { ...x.picks, [k]: on ? (x.picks?.[k] ?? []).filter((y) => y !== o) : [...(x.picks?.[k] ?? []), o] } })); }}
@@ -488,6 +491,54 @@ function RefusalEditor({ s, update }: { s: SopInput; update: (p: Partial<SopInpu
         </div>
       ))}
       <button type="button" className="btn-ghost w-full" onClick={() => update({ refusalList: [...list, { country: "", year: "", visaType: "", reason: "", changes: [] }] })}>+ Add a previous refusal</button>
+    </div>
+  );
+}
+
+/** Job market at home: target employers (suggested by home country and field) and salary comparison. */
+function CareerMarket({ s, update }: { s: SopInput; update: (p: Partial<SopInput>) => void }) {
+  const [custom, setCustom] = useState("");
+  const [niche, setNiche] = useState("");
+  const sug = suggestCompanies(s);
+  const big = s.targetCompanies ?? [];
+  const small = s.nicheCompanies ?? [];
+  const home = s.nationality || "your home country";
+  const cur = s.salaryCurrency || currencyOf(s.nationality);
+  const toggle = (c: string) => update({ targetCompanies: big.includes(c) ? big.filter((x) => x !== c) : [...big, c] });
+  return (
+    <div className="mb-3 space-y-3 rounded-2xl border border-indigo-100 bg-indigo-50/30 p-3">
+      <div className="text-sm font-semibold">💼 Job market in {home}: employers & salaries</div>
+      {sug.length > 0 ? (
+        <div>
+          <div className="text-[11px] font-semibold text-slate-500">Leading employers you could work for (tick):</div>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {sug.map((c) => (
+              <button type="button" key={c} onClick={() => toggle(c)} className={`rounded-full border px-2.5 py-1 text-xs ${big.includes(c) ? "border-indigo-500 bg-indigo-600 text-white" : "border-line bg-white text-slate-700"}`}>{big.includes(c) ? "✓ " : ""}{c}</button>
+            ))}
+          </div>
+        </div>
+      ) : <p className="text-xs text-slate-500">Choose your nationality to see suggested employers, or add companies below.</p>}
+      <div className="flex gap-2">
+        <input className="input" placeholder="Add another leading company" value={custom} onChange={(e) => setCustom(e.target.value)} />
+        <button type="button" className="btn-ghost" onClick={() => { if (custom.trim()) { update({ targetCompanies: [...big, custom.trim()] }); setCustom(""); } }}>Add</button>
+      </div>
+      {big.filter((c) => !sug.includes(c)).length > 0 && <div className="flex flex-wrap gap-1.5">{big.filter((c) => !sug.includes(c)).map((c) => <span key={c} className="chip bg-indigo-100 text-indigo-800">{c} <button onClick={() => toggle(c)}>✕</button></span>)}</div>}
+      <div className="flex gap-2">
+        <input className="input" placeholder="Smaller niche company (optional)" value={niche} onChange={(e) => setNiche(e.target.value)} />
+        <button type="button" className="btn-ghost" onClick={() => { if (niche.trim()) { update({ nicheCompanies: [...small, niche.trim()] }); setNiche(""); } }}>Add</button>
+      </div>
+      {small.length > 0 && <div className="flex flex-wrap gap-1.5">{small.map((c) => <span key={c} className="chip bg-slate-100 text-slate-700">{c} <button onClick={() => update({ nicheCompanies: small.filter((x) => x !== c) })}>✕</button></span>)}</div>}
+      <div className="text-[11px] font-semibold text-slate-500">Salary comparison (enter real figures you can show, e.g. from job adverts or a salary survey)</div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <label className="text-xs text-slate-500">Currency<input className="input mt-1" value={cur} onChange={(e) => update({ salaryCurrency: e.target.value })} /></label>
+        <label className="text-xs text-slate-500">Period
+          <select className="input mt-1" value={s.salaryPeriod || "per month"} onChange={(e) => update({ salaryPeriod: e.target.value })}><option>per month</option><option>per year</option></select>
+        </label>
+        <label className="text-xs text-slate-500">Local graduate salary<input className="input mt-1" placeholder="e.g. 150,000" value={s.salaryLocal ?? ""} onChange={(e) => update({ salaryLocal: e.target.value })} /></label>
+        <label className="text-xs text-slate-500">Overseas postgraduate: from<input className="input mt-1" placeholder="e.g. 200,000" value={s.salaryOverseasMin ?? ""} onChange={(e) => update({ salaryOverseasMin: e.target.value })} /></label>
+        <label className="text-xs text-slate-500">to<input className="input mt-1" placeholder="e.g. 400,000" value={s.salaryOverseasMax ?? ""} onChange={(e) => update({ salaryOverseasMax: e.target.value })} /></label>
+        <label className="text-xs text-slate-500">Source<input className="input mt-1" placeholder="e.g. job adverts on topjobs.lk, 2026" value={s.salarySource ?? ""} onChange={(e) => update({ salarySource: e.target.value })} /></label>
+      </div>
     </div>
   );
 }
