@@ -3,9 +3,9 @@ import { complianceLine, composeLong, composeRefusals } from "./sopAuto";
 // Statement of Purpose / Genuine Student / Study Plan writer. Uses ONLY the facts the applicant gives;
 // anything missing stays as a [placeholder] so nothing is invented.
 
-export type EduEntry = { qualification: string; institution: string; from: string; to: string; result: string; certificate: boolean };
+export type EduEntry = { qualification: string; institution: string; from: string; to: string; result: string; certificate: boolean; stream?: string; activities?: string; note?: string };
 export type JobEntry = { role: string; employer: string; from: string; to: string; current: boolean; duties: string; letter: boolean };
-export const EMPTY_EDU: EduEntry = { qualification: "", institution: "", from: "", to: "", result: "", certificate: false };
+export const EMPTY_EDU: EduEntry = { qualification: "", institution: "", from: "", to: "", result: "", certificate: false, stream: "", activities: "", note: "" };
 export const EMPTY_JOB: JobEntry = { role: "", employer: "", from: "", to: "", current: false, duties: "", letter: false };
 
 export type TripEntry = { country: string; year: string; purpose: string };
@@ -105,6 +105,7 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 export const INTAKE_OPTIONS = [2026, 2027, 2028, 2029].flatMap((y) => MONTHS.map((m) => `${m} ${y}`));
 export const DURATION_OPTIONS = ["3 months", "6 months", "9 months", "1 year", "15 months", "18 months", "2 years", "3 years", "4 years", "5 years"];
 export const QUALIFICATION_OPTIONS = [
+  "Primary education", "Primary and secondary education (up to GCE O/L)", "Secondary education / high school",
   "GCE O/L (Ordinary Level)", "GCE A/L (Advanced Level)", "High school / Grade 12", "Foundation programme", "Diploma",
   "Higher National Diploma (HND)", "Bachelor's degree", "Bachelor's degree (Honours)", "Postgraduate Diploma", "Master's degree", "PhD",
 ];
@@ -172,6 +173,45 @@ export function findGaps(i: SopInput): string[] {
   return gaps;
 }
 
+const isSchool = (q: string) => /primary|secondary|high school|o\/l|a\/l|ordinary level|advanced level|grade|school/i.test(q);
+const plain = (q: string) => q.trim().replace(/^(my|a|an|the) /i, "");
+const yearOf = (d: string) => d?.match(/^\d{4}/)?.[0] ?? "";
+const capFirst = (x: string) => x.replace(/^./, (c) => c.toUpperCase());
+
+/** Model-SOP style education: the story from primary school to now, then "Academic Qualifications by Date". */
+export function educationFull(i: SopInput): string {
+  const list = (i.education ?? []).filter((e) => e.qualification || e.institution).sort((a, b) => (a.to || a.from || "9999").localeCompare(b.to || b.from || "9999"));
+  if (!list.length) return educationText(i);
+  const stage = (q: string) => (/primary and secondary/i.test(q) ? 1 : /^(my )?primary/i.test(q) ? 0 : /secondary|high school/i.test(q) ? 2 : /o\/l|ordinary/i.test(q) ? 3 : /a\/l|advanced/i.test(q) ? 4 : 5);
+  const schools = list.filter((x) => isSchool(x.qualification)).sort((a, b) => stage(a.qualification) - stage(b.qualification));
+  const story: string[] = [];
+  const named = new Set<string>();
+  const inst = (x?: string) => (x ?? "").trim();
+  for (const e of schools) {
+    const q = plain(e.qualification);
+    const at = e.institution ? ` at ${e.institution.trim()}` : "";
+    if (/primary and secondary/i.test(q)) story.push(`I had my primary and secondary education up to GCE O/L${at}.`);
+    else if (/^primary/i.test(q)) story.push(`I had my primary education${at}.`);
+    else if (/secondary|high school/i.test(q)) story.push(`I continued my secondary education${at}.`);
+    else if (/o\/l|ordinary/i.test(q)) story.push(`I successfully passed my ${q}${e.result ? ` with ${e.result}` : ""}${yearOf(e.to) ? ` in ${yearOf(e.to)}` : ""}${at && !named.has(inst(e.institution)) ? at : ""}.`);
+    else if (/a\/l|advanced/i.test(q)) story.push(`I then moved to ${e.institution?.trim() || "[school]"}${/,/.test(e.institution ?? "") ? "," : ""} for high school, where I studied ${e.stream?.trim() ? `in the ${e.stream.trim().replace(/^the /i, "")}` : "[stream]"} for my ${q.replace(/,? ?(in the )?science stream/i, "")}${yearOf(e.to) ? `, sitting the examination in ${yearOf(e.to)}` : ""}${e.result ? ` and achieving ${e.result}` : ""}.`);
+    else story.push(`I completed my ${q}${at}${e.result ? `, achieving ${e.result}` : ""}.`);
+    named.add(inst(e.institution));
+    if (e.activities?.trim()) story.push(`At ${e.institution?.trim() || "school"}, ${e.activities.trim().replace(/^i /i, "I ").replace(/^(?!I )/, "I ").replace(/\.$/, "")}.`);
+    if (e.note?.trim()) story.push(capFirst(e.note.trim().replace(/\.$/, "")) + ".");
+  }
+  const dated = list.filter((e) => !/^primary/i.test(plain(e.qualification)));
+  const lines = dated.map((e, n) => {
+    const when = e.from && e.to ? `From ${monthText(e.from)} to ${monthText(e.to)}` : e.to ? monthText(e.to) : e.from ? `Since ${monthText(e.from)}` : "[date]";
+    const what = `${capFirst(plain(e.qualification))}${e.stream?.trim() && !isSchool(e.qualification) ? ` (${e.stream.trim()})` : e.stream?.trim() && /a\/l|advanced/i.test(e.qualification) ? ` (${e.stream.trim()})` : ""}`;
+    const where = e.institution?.trim() ? `, ${e.institution.trim()}` : "";
+    const res = e.result?.trim() ? `, ${e.result.trim()}` : "";
+    const note = !isSchool(e.qualification) && e.note?.trim() ? ` ${capFirst(e.note.trim().replace(/\.$/, ""))}.` : "";
+    return `${n + 1}. ${when}: ${what}${where}${res}.${note}`;
+  });
+  return [story.join(" "), lines.length ? `\nAcademic Qualifications by Date\n${lines.join("\n")}` : ""].filter(Boolean).join("\n");
+}
+
 function educationText(i: SopInput) {
   const list = i.education.filter((e) => e.qualification || e.institution).sort((a, b) => (monthIndex(a.from) ?? 0) - (monthIndex(b.from) ?? 0));
   if (!list.length) {
@@ -188,6 +228,7 @@ function educationText(i: SopInput) {
 
 function englishText(i: SopInput) {
   if (!i.englishTest) return "";
+  if (/university english waiver/i.test(i.englishTest) && i.university.trim()) return `As my previous studies were taught entirely in English, ${i.university.trim()} has exempted me from the IELTS requirement.${i.englishScore ? "" : ""}`;
   if (/waiver|moi/i.test(i.englishTest)) return /moi|medium/i.test(i.englishTest) ? "My previous studies were taught entirely in English, and my English proficiency is confirmed by a Medium of Instruction (MOI) letter." : "My English proficiency has been accepted by the university through an English language waiver, as my previous studies were taught in English.";
   if (/not required/i.test(i.englishTest)) return "I am exempt from an English test as I am from an English-speaking country.";
   if (/not taken/i.test(i.englishTest)) return "[Add your English test result once available]";
@@ -339,7 +380,7 @@ export function buildSop(input: SopInput): string {
       "Dear Sir/Madam,",
       `Statement of Purpose: ${name}`,
       `I, ${name}, write this statement of purpose in support of my application to study the ${course} at ${uni}, ${country}${i.intake ? `, starting ${i.intake}` : ""}${i.duration ? ` (${i.duration})` : ""}.`,
-      `Education (Academic Qualifications by Date)\n${educationText(i)}`,
+      `Education\n${educationFull(i)}`,
       englishText(i) && `English Language (IELTS / Waiver)\n${englishText(i)}`,
       work && `Work Experience\n${work}`,
       gapText(i) && `Gaps (Study and Work Gaps Explained)\n${gapText(i)}`,

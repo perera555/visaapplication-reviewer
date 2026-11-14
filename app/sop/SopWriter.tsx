@@ -349,7 +349,7 @@ function EduJobEditors({ s, setList, gaps, worker }: { s: SopInput; setList: <K 
   );
   const eduBlock = (
     <section>
-      <h3 className="label">🎓 Academic qualifications (one entry per certificate)</h3>
+      <h3 className="label">🎓 Education: from primary school to your latest qualification (one entry each)</h3>
       <div className="space-y-3">
         {s.education.map((e, i) => (
           <div key={i} className="rounded-2xl border border-line bg-slate-50/60 p-3">
@@ -365,7 +365,10 @@ function EduJobEditors({ s, setList, gaps, worker }: { s: SopInput; setList: <K 
               <input className="input" placeholder="School / university" value={e.institution} onChange={(ev) => upEdu(i, { institution: ev.target.value })} />
               <label className="text-xs text-slate-500">From<input type="month" className="input mt-1" value={e.from} onChange={(ev) => upEdu(i, { from: ev.target.value })} /></label>
               <label className="text-xs text-slate-500">Completed<input type="month" className="input mt-1" value={e.to} onChange={(ev) => upEdu(i, { to: ev.target.value })} /></label>
-              <input className="input sm:col-span-2" placeholder="Result, e.g. First Class Honours / GPA 3.6 / 3 A passes" value={e.result} onChange={(ev) => upEdu(i, { result: ev.target.value })} />
+              <input className="input sm:col-span-2" placeholder="Result, e.g. First Class Honours / GPA 3.6 / Distinctions and Credits" value={e.result} onChange={(ev) => upEdu(i, { result: ev.target.value })} />
+              <input className="input sm:col-span-2" placeholder="Stream / main subjects, e.g. Science stream, Computing and Systems Development" value={e.stream ?? ""} onChange={(ev) => upEdu(i, { stream: ev.target.value })} />
+              <textarea className="input min-h-16 sm:col-span-2" placeholder="Activities & achievements here, e.g. member of the debating team, represented the college First XI cricket team (2000–2001)" value={e.activities ?? ""} onChange={(ev) => upEdu(i, { activities: ev.target.value })} />
+              <textarea className="input min-h-16 sm:col-span-2" placeholder="Note (optional), e.g. why you chose this route or what happened next: I chose the Foundation and Diploma route to combine study with work" value={e.note ?? ""} onChange={(ev) => upEdu(i, { note: ev.target.value })} />
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-4 text-sm">
               <label className="flex items-center gap-2"><input type="checkbox" className="accent-emerald-600" checked={e.certificate} onChange={(ev) => upEdu(i, { certificate: ev.target.checked })} /> Certificate & transcript ready</label>
