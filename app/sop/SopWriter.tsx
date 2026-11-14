@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { COUNTRIES, flag } from "@/lib/countries";
 import { FIELD_EXAMPLES, suggestSubjects } from "@/lib/sop";
 import { currencyOf, suggestCompanies } from "@/lib/sopCareer";
@@ -58,6 +58,7 @@ export function SopWriter() {
   const text = edited ?? generated;
   const review = useMemo(() => reviewDocument(text, { fullName: s.fullName, destination: s.country, visaType: worker ? "work" : "student", university: worker ? undefined : s.university, knownInstitutions: s.education.map((e) => e.institution) }), [text, s.fullName, s.country, s.university, s.education, worker]);
   const missing = (text.match(/\[[^\]]+\]/g) ?? []).length;
+  const [editMode, setEditMode] = useState(false);
 
   /** Fill empty fields from an uploaded document (CV, transcript, offer letter, IELTS…). */
   async function upload(slot: string, list: FileList | null) {
@@ -188,6 +189,7 @@ export function SopWriter() {
 
   return (
     <div className="space-y-6">
+      <a href="#sop-preview" className="fixed bottom-4 right-4 z-40 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 px-4 py-3 text-sm font-bold text-white shadow-2xl lg:hidden">📄 See my SOP</a>
       <div className="card">
         <h2 className="font-bold">1. Upload documents to fill the details (optional)</h2>
         <p className="mt-1 text-xs text-slate-500">Upload one file per document. Each academic certificate adds a qualification and each experience letter adds a job, so upload them one by one (or several at once).</p>
@@ -335,7 +337,20 @@ export function SopWriter() {
             <span className="w-full text-[11px] text-slate-400">Text between ** ** is printed in bold in the PDF.</span>
             <span className="ml-auto text-xs text-slate-500">{wordCount(text)} words · ≈ {estimatePages(text)} pages · {missing} to fill</span>
           </div>
-          <textarea className="min-h-[560px] w-full rounded-2xl border border-line bg-white p-6 font-serif text-[15px] leading-relaxed shadow-xl outline-none" value={text} onChange={(e) => setEdited(e.target.value)} />
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-xl border border-line bg-white p-0.5 text-xs font-semibold">
+              <button type="button" onClick={() => setEditMode(false)} className={`rounded-lg px-3 py-1.5 ${!editMode ? "bg-indigo-600 text-white" : "text-slate-600"}`}>👁 Live preview</button>
+              <button type="button" onClick={() => setEditMode(true)} className={`rounded-lg px-3 py-1.5 ${editMode ? "bg-indigo-600 text-white" : "text-slate-600"}`}>✏️ Edit text</button>
+            </div>
+            <span className="text-[11px] text-slate-500">Changes you make on the left flash <span className="rounded bg-amber-200 px-1">yellow</span> here.</span>
+          </div>
+          <div id="sop-preview" className="scroll-mt-20">
+            {editMode ? (
+              <textarea className="min-h-[560px] w-full rounded-2xl border border-line bg-white p-6 font-serif text-[15px] leading-relaxed shadow-xl outline-none" value={text} onChange={(e) => setEdited(e.target.value)} />
+            ) : (
+              <SopPreview text={text} />
+            )}
+          </div>
           <div className={`card ${review.verdict === "error" ? "border-rose-300" : review.verdict === "warning" ? "border-amber-300" : "border-emerald-300"}`}>
             <h3 className="font-bold">{review.verdict === "ok" ? "✅ Ready" : review.verdict === "error" ? "❌ Fix before using" : "⚠️ Can be improved"}</h3>
             <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto text-sm">
@@ -592,6 +607,46 @@ function CareerMarket({ s, update }: { s: SopInput; update: (p: Partial<SopInput
         <label className="text-xs text-slate-500">to<input className="input mt-1" placeholder="e.g. 400,000" value={s.salaryOverseasMax ?? ""} onChange={(e) => update({ salaryOverseasMax: e.target.value })} /></label>
         <label className="text-xs text-slate-500">Source<input className="input mt-1" placeholder="e.g. job adverts on topjobs.lk, 2026" value={s.salarySource ?? ""} onChange={(e) => update({ salarySource: e.target.value })} /></label>
       </div>
+    </div>
+  );
+}
+
+/** Formatted live preview: bold headings and **figures**, red [blanks], and changed paragraphs flash yellow. */
+function SopPreview({ text }: { text: string }) {
+  const paras = text.split("\n");
+  const prev = useRef<Set<string> | null>(null);
+  const [changed, setChanged] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const now = new Set(paras.map((p) => p.trim()).filter(Boolean));
+    if (prev.current) {
+      const diff = new Set([...now].filter((p) => !prev.current!.has(p)));
+      if (diff.size && diff.size < now.size) {
+        setChanged(diff);
+        const t = setTimeout(() => setChanged(new Set()), 2500);
+        prev.current = now;
+        return () => clearTimeout(t);
+      }
+    }
+    prev.current = now;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
+  const isHeading = (p: string, next?: string) => p.length > 2 && p.length < 110 && !/[.,;:]$/.test(p) && /^[A-Z]/.test(p) && !/^(Yours|Dear|\(Applicant\))/.test(p) && Boolean(next?.trim());
+  const inline = (p: string) =>
+    p.split(/(\*\*[^*]+\*\*|\[[^\]]+\])/g).map((part, k) =>
+      part.startsWith("**") ? <b key={k}>{part.slice(2, -2)}</b> : part.startsWith("[") ? <span key={k} className="rounded bg-rose-100 px-1 font-semibold text-rose-700">{part}</span> : <span key={k}>{part}</span>,
+    );
+  return (
+    <div className="max-h-[75vh] min-h-[560px] overflow-y-auto rounded-2xl border border-line bg-white p-6 font-serif text-[15px] leading-relaxed shadow-xl">
+      {paras.map((p, n) => {
+        const t = p.trim();
+        if (!t) return <div key={n} className="h-3" />;
+        const hl = changed.has(t) ? "bg-amber-200/80 transition-colors duration-700" : "transition-colors duration-700";
+        return isHeading(t, paras[n + 1]) ? (
+          <h4 key={n} className={`mt-2 font-bold text-slate-900 ${hl}`}>{inline(t)}</h4>
+        ) : (
+          <p key={n} className={`${hl}`}>{inline(t)}</p>
+        );
+      })}
     </div>
   );
 }
