@@ -195,8 +195,8 @@ export function SopWriter() {
           {!worker && (
             <Field label="SOP style">
               <select className="input" value={s.style} onChange={(e) => { setEdited(null); setS((x) => ({ ...x, style: e.target.value as SopInput["style"] })); }}>
-                <option value="auto">Automatic: country format (Australia GS answers, Canada study plan, standard SOP)</option>
-                <option value="full">Full letter SOP: every section (education, English, work, gaps, why not home, why country, why university & course, career, travel, family & funding)</option>
+                <option value="full">Full SOP (recommended): every section, like our model SOP</option>
+                <option value="auto">Country format: Australia GS answers / Canada study plan / standard SOP</option>
               </select>
             </Field>
           )}

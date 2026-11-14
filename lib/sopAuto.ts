@@ -3,7 +3,7 @@
 // Padding only uses neutral reasons that make no personal factual claim.
 import type { SopInput } from "./sop";
 
-type Ctx = { finalProject: string; course: string; level: string; uni: string; country: string; home: string; lastEdu: string; prevSubjects: string; role: string; employer: string; duties: string; modules: string };
+type Ctx = { city: string; finalProject: string; course: string; level: string; uni: string; country: string; home: string; lastEdu: string; prevSubjects: string; role: string; employer: string; duties: string; modules: string };
 type Expander = (c: Ctx) => string;
 
 const MIN_WORDS = 150;
@@ -17,6 +17,7 @@ export function sopContext(i: SopInput): Ctx {
   const home = i.nationality.trim() || i.homeCity.split(",").pop()?.trim() || "my home country";
   return {
     finalProject: (i.finalProject ?? "").trim(),
+    city: (i.city ?? "").trim(),
     course: `${i.level} ${i.course}`.replace(/\s+/g, " ").trim() || "this course",
     level: /master|mba|graduate|postgraduate|phd|doctor/i.test(i.level) ? "postgraduate" : "higher",
     uni: i.university.trim() || "this university",
@@ -71,7 +72,7 @@ const EXPAND: Record<string, Record<string, Expander>> = {
     "friends and relatives studied there and returned to good careers": (c) => `Friends and relatives who studied in ${c.country} returned to ${c.home} and built successful careers, and their experience encouraged me to make the same choice.`,
     "the total cost is reasonable compared with other study destinations": (c) => `The total cost of studying in ${c.country} is reasonable compared with other major study destinations and is within my family's means.`,
     "it is a world leader in education standards and facilities": (c) => `${c.country} is one of the world's leading education destinations, with excellent universities, facilities and learning resources.`,
-    "the city is safe, liveable and welcoming to students": () => `The city where I will study is safe, liveable and welcoming to students, which will help me settle in quickly and concentrate on my course.`,
+    "the city is safe, liveable and welcoming to students": (c) => `${c.city ? `${c.city}, where I will study,` : "The city where I will study"} is safe, liveable and welcoming to students, which will help me settle in quickly and concentrate on my course.`,
     "I have visited before and complied fully with my visa": (c) => `I have visited ${c.country} before and complied fully with my visa conditions, so I understand what is expected of visitors and students.`,
   },
   whyNotHome: {
@@ -174,7 +175,7 @@ const PAD: Record<string, string[]> = {
 const INTRO: Record<string, (c: Ctx) => string> = {
   whyCourse: (c) => `I have chosen the ${c.course} because it fits both my academic background and my career plans.`,
   whyUniversity: (c) => `I chose ${c.uni} after carefully comparing several universities that offer similar programmes.`,
-  whyCountry: (c) => `Before choosing ${c.country}, I considered several study destinations.`,
+  whyCountry: (c) => `Before choosing ${c.country}${c.city ? ` and ${c.city}` : ""}, I considered several study destinations.`,
   whyNotHome: (c) => `I carefully considered studying in ${c.home} before deciding to study abroad.`,
   shortGoal: (c) => `After completing the ${c.course}, I will return to ${c.home}.`,
   longGoal: () => ``,

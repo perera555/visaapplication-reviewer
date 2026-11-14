@@ -58,6 +58,7 @@ export type SopInput = {
   countryCode: string;
   level: string; course: string; university: string; universityAddress: string; intake: string; duration: string;
   finalProject: string;
+  city: string;
   targetCompanies: string[]; nicheCompanies: string[];
   salaryCurrency: string; salaryPeriod: string; salaryLocal: string; salaryOverseasMin: string; salaryOverseasMax: string; salarySource: string;
   prevDegree: string; prevInstitution: string; prevYear: string; prevResult: string; prevSubjects: string;
@@ -73,14 +74,14 @@ export type SopInput = {
 
 export const EMPTY_SOP: SopInput = {
   applicantType: "student",
-  style: "auto",
+  style: "full",
   length: "detailed",
   picks: {}, refusalList: [],
   autoWrite: true, trips: [], travelNone: false, family: { father: "", mother: "", brothers: "", sisters: "", position: "", marital: "", children: "", spouseJob: "", relativesAbroad: "", livesWith: "" },
   destEmployer: "", destRole: "", destSalary: "", destStart: "", destContract: "", sponsorRef: "", whyEmployer: "", destAddress: "",
   education: [], jobs: [], travelHistory: "",
   fullName: "", nationality: "Sri Lanka", homeCity: "", age: "", country: "", countryCode: "",
-  level: "", course: "", university: "", universityAddress: "", intake: "", duration: "", finalProject: "",
+  level: "", course: "", university: "", universityAddress: "", intake: "", duration: "", finalProject: "", city: "",
   targetCompanies: [], nicheCompanies: [], salaryCurrency: "", salaryPeriod: "per month", salaryLocal: "", salaryOverseasMin: "", salaryOverseasMax: "", salarySource: "",
   prevDegree: "", prevInstitution: "", prevYear: "", prevResult: "", prevSubjects: "",
   englishTest: "", englishScore: "", workExperience: "",
@@ -124,7 +125,7 @@ const OTHER: Section = { section: "Other (optional)", fields: [["gaps", "Explain
 /** Fields for students (SOP / Genuine Student / study plan). Education & jobs are edited as lists. */
 export const SOP_FIELDS: Section[] = [
   ABOUT,
-  { section: "Course you applied for", fields: [["level", "Course level", "select", LEVEL_OPTIONS], ["course", "Course name (e.g. Data Science)", "text"], ["university", "University / college (filled from offer letter)", "text"], ["universityAddress", "University address (filled from offer letter)", "textarea"], ["intake", "Intake", "select", INTAKE_OPTIONS], ["duration", "Course duration", "select", DURATION_OPTIONS], ["modules", "Modules / research areas that interest you", "textarea"]] },
+  { section: "Course you applied for", fields: [["level", "Course level", "select", LEVEL_OPTIONS], ["course", "Course name (e.g. Data Science)", "text"], ["university", "University / college (filled from offer letter)", "text"], ["city", "City of study (e.g. Perth)", "text"], ["universityAddress", "University address (filled from offer letter)", "textarea"], ["intake", "Intake", "select", INTAKE_OPTIONS], ["duration", "Course duration", "select", DURATION_OPTIONS], ["modules", "Modules / research areas that interest you", "textarea"]] },
   { section: "English & studies", fields: [["prevSubjects", "Main subjects of your last degree (tick suggestions or type)", "textarea"], ["finalProject", "Final project / dissertation title (optional)", "text"], ["englishTest", "English test (or MOI waiver)", "select", ENGLISH_TEST_OPTIONS], ["englishScore", "Score (overall band / total)", "text"]] },
   { section: "Why this course, university and country", fields: [["whyCourse", "Why this course (how it builds on your studies/work)", "textarea"], ["whyUniversity", "Why this university (modules, facilities, staff, industry links)", "textarea"], ["whyCountry", "Why this country", "textarea"], ["whyNotHome", "Why not study this in your home country", "textarea"]] },
   { section: "Career plans after the course", fields: [["shortGoal", "Short-term goal (1–3 years after graduating)", "textarea"], ["longGoal", "Long-term goal", "textarea"], ["jobProspects", "Job prospects at home (employers, roles, expected salary)", "textarea"]] },
@@ -343,7 +344,7 @@ export function buildSop(input: SopInput): string {
       work && `Work Experience\n${work}`,
       gapText(i) && `Gaps (Study and Work Gaps Explained)\n${gapText(i)}`,
       i.whyNotHome.trim() && `Why not Study in ${homeCountry}\n${i.whyNotHome.trim()}`,
-      `Reasons for Choosing ${country}\n${v(i.whyCountry, "specific reasons for choosing this country")}`,
+      `Reasons for Choosing ${country}${i.city.trim() ? ` and ${i.city.trim()}` : ""}\n${v(i.whyCountry, "specific reasons for choosing this country")}`,
       `Reasons for Choosing the Course: ${course}\n${whyCourseText}`,
       `Reasons for Choosing the University: ${uni}\n${whyUniText}`,
       `Future Career Plans and Returning to ${homeCountry}\n${career}`,
@@ -436,7 +437,7 @@ export const EXAMPLE_SOP: SopInput = {
   applicantType: "student", style: "full", autoWrite: true,
   fullName: "Nimal Silva", nationality: "Sri Lanka", homeCity: "Maharagama, Colombo, Sri Lanka", age: "",
   countryCode: "AU", country: "Australia", level: "Master of", course: "Computer Science", university: "Edith Cowan University",
-  universityAddress: "Joondalup Campus, 270 Joondalup Drive, Joondalup, Western Australia 6027", intake: "February 2027", duration: "2 years",
+  universityAddress: "Joondalup Campus, 270 Joondalup Drive, Joondalup, Western Australia 6027", city: "Perth", intake: "February 2027", duration: "2 years",
   education: [
     { ...EMPTY_EDU, qualification: "my GCE O/L (Ordinary Level)", institution: "a national school in Colombo", to: "2008-12", result: "Distinctions and Credits", certificate: true },
     { ...EMPTY_EDU, qualification: "my GCE A/L (Advanced Level) in the Science stream", institution: "a leading college in Colombo", to: "2011-08", certificate: true },
