@@ -59,6 +59,8 @@ export type SopInput = {
   level: string; course: string; university: string; universityAddress: string; intake: string; duration: string;
   finalProject: string;
   city: string;
+  /** what the applicant did after school, before higher studies (coaching, first job, delays) */
+  afterSchool: string;
   targetCompanies: string[]; nicheCompanies: string[];
   salaryCurrency: string; salaryPeriod: string; salaryLocal: string; salaryOverseasMin: string; salaryOverseasMax: string; salarySource: string;
   prevDegree: string; prevInstitution: string; prevYear: string; prevResult: string; prevSubjects: string;
@@ -81,7 +83,7 @@ export const EMPTY_SOP: SopInput = {
   destEmployer: "", destRole: "", destSalary: "", destStart: "", destContract: "", sponsorRef: "", whyEmployer: "", destAddress: "",
   education: [], jobs: [], travelHistory: "",
   fullName: "", nationality: "Sri Lanka", homeCity: "", age: "", country: "", countryCode: "",
-  level: "", course: "", university: "", universityAddress: "", intake: "", duration: "", finalProject: "", city: "",
+  level: "", course: "", university: "", universityAddress: "", intake: "", duration: "", finalProject: "", city: "", afterSchool: "",
   targetCompanies: [], nicheCompanies: [], salaryCurrency: "", salaryPeriod: "per month", salaryLocal: "", salaryOverseasMin: "", salaryOverseasMax: "", salarySource: "",
   prevDegree: "", prevInstitution: "", prevYear: "", prevResult: "", prevSubjects: "",
   englishTest: "", englishScore: "", workExperience: "",
@@ -209,7 +211,8 @@ export function educationFull(i: SopInput): string {
     const note = !isSchool(e.qualification) && e.note?.trim() ? ` ${capFirst(e.note.trim().replace(/\.$/, ""))}.` : "";
     return `${n + 1}. ${when}: ${what}${where}${res}.${note}`;
   });
-  return [story.join(" "), lines.length ? `\nAcademic Qualifications by Date\n${lines.join("\n")}` : ""].filter(Boolean).join("\n");
+  if (i.afterSchool?.trim()) story.push("\n" + capFirst(i.afterSchool.trim().replace(/\.$/, "")) + ".");
+  return [story.join(" ").replace(/ \n/g, "\n"), lines.length ? `\nAcademic Qualifications by Date\n${lines.join("\n")}` : ""].filter(Boolean).join("\n");
 }
 
 function educationText(i: SopInput) {

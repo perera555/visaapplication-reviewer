@@ -73,6 +73,26 @@ export const FORM_SECTIONS: FormSection[] = [
     ],
   },
   {
+    id: "education", title: "Education", icon: "🎓",
+    fields: [
+      { key: "eduSchool", label: "Primary & secondary school (up to O/L)", aliases: ["school", "secondaryschool"] },
+      { key: "eduOlYear", label: "GCE O/L year", aliases: ["olyear"] },
+      { key: "eduOlResult", label: "GCE O/L result (e.g. Distinctions and Credits)" },
+      { key: "eduAlSchool", label: "A/L school / college" },
+      { key: "eduAlYear", label: "GCE A/L year" },
+      { key: "eduAlStream", label: "A/L stream", type: "select", options: ["Science stream", "Mathematics stream", "Biology stream", "Commerce stream", "Arts stream", "Technology stream"] },
+      { key: "eduDiploma", label: "Diploma / HND (name)" },
+      { key: "eduDiplomaInstitution", label: "Diploma institution" },
+      { key: "eduDiplomaFrom", label: "Diploma start", type: "date" },
+      { key: "eduDiplomaTo", label: "Diploma completed", type: "date" },
+      { key: "eduDegree", label: "Degree (name)", aliases: ["degree", "highestqualification", "qualification"] },
+      { key: "eduDegreeInstitution", label: "Degree university", aliases: ["university", "nameofuniversity"] },
+      { key: "eduDegreeFrom", label: "Degree start", type: "date" },
+      { key: "eduDegreeTo", label: "Degree completed", type: "date" },
+      { key: "eduDegreeResult", label: "Degree result (e.g. First Class Honours)" },
+    ],
+  },
+  {
     id: "family", title: "Family", icon: "👨‍👩‍👧",
     fields: [
       { key: "fatherName", label: "Father's full name", aliases: ["fathername", "fathersname", "father"] },

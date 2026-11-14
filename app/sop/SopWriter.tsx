@@ -136,6 +136,41 @@ export function SopWriter() {
     setMsg(Object.keys(got).length ? `Filled ${Object.keys(got).length} field(s) from your ${slot}. Check them below.` : `No new details found in the ${slot} (scanned files cannot be read). Fill the fields manually.`);
   }
 
+  /** Bring details from the visa Application Form (saved on this device) into the SOP. */
+  function importFromForm() {
+    let v: Record<string, string> = {};
+    try {
+      v = JSON.parse(localStorage.getItem("visa-form-v1") ?? "{}");
+    } catch {}
+    if (!Object.keys(v).length) {
+      setMsg("No application form found on this device. Fill the Application Form first (menu: Form).");
+      return;
+    }
+    const ym = (d?: string) => (d ? d.slice(0, 7) : "");
+    const yr = (y?: string) => (y && /\d{4}/.test(y) ? `${y.match(/\d{4}/)![0]}-12` : "");
+    const edu: EduEntry[] = [];
+    if (v.eduSchool) edu.push({ ...EMPTY_EDU, qualification: "Primary and secondary education (up to GCE O/L)", institution: v.eduSchool });
+    if (v.eduOlYear || v.eduOlResult) edu.push({ ...EMPTY_EDU, qualification: "GCE O/L (Ordinary Level)", institution: v.eduSchool ?? "", to: yr(v.eduOlYear), result: v.eduOlResult ?? "", certificate: true });
+    if (v.eduAlSchool || v.eduAlYear) edu.push({ ...EMPTY_EDU, qualification: "GCE A/L (Advanced Level)", institution: v.eduAlSchool ?? "", to: yr(v.eduAlYear), stream: v.eduAlStream ?? "", certificate: true });
+    if (v.eduDiploma) edu.push({ ...EMPTY_EDU, qualification: v.eduDiploma, institution: v.eduDiplomaInstitution ?? "", from: ym(v.eduDiplomaFrom), to: ym(v.eduDiplomaTo), certificate: true });
+    if (v.eduDegree) edu.push({ ...EMPTY_EDU, qualification: v.eduDegree, institution: v.eduDegreeInstitution ?? "", from: ym(v.eduDegreeFrom), to: ym(v.eduDegreeTo), result: v.eduDegreeResult ?? "", certificate: true });
+    const job: JobEntry[] = v.employer ? [{ ...EMPTY_JOB, role: v.occupation && !/employed|student|retired|homemaker/i.test(v.occupation) ? v.occupation : "", employer: v.employer, from: ym(v.jobStart), current: true }] : [];
+    setEdited(null);
+    setS((x) => ({
+      ...x,
+      fullName: [v.givenNames, v.surname].filter(Boolean).join(" ") || x.fullName,
+      nationality: v.nationality || x.nationality,
+      homeCity: [v.address, v.city, v.country].filter(Boolean).join(", ") || x.homeCity,
+      country: v.destination || x.country,
+      countryCode: COUNTRIES.find((c) => c.name === v.destination)?.code ?? x.countryCode,
+      education: edu.length ? edu : x.education,
+      jobs: job.length && !x.jobs.length ? job : x.jobs,
+      travelHistory: v.previousVisits || x.travelHistory,
+      family: { ...EMPTY_FAMILY, ...x.family, marital: v.maritalStatus || x.family?.marital || "" },
+    }));
+    setMsg(`Imported from your application form: ${edu.length} education entr${edu.length === 1 ? "y" : "ies"}${job.length ? ", current job" : ""}, personal details. Check them below.`);
+  }
+
   async function polish() {
     setBusy(true);
     try {
@@ -174,6 +209,7 @@ export function SopWriter() {
         <div className="card space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-bold">2. Your details (type or correct them)</h2>
+            <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={importFromForm}>📝 Import from my Application Form</button>
             <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => { if (confirm("Replace the form with the example SOP? (Your current details will be replaced.)")) { setEdited(null); setS(EXAMPLE_SOP); setFilled({}); setMsg("Example loaded: Master of Computer Science, Australia (full letter style). Replace the details with your own."); } }}>📄 Load example SOP</button>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -213,7 +249,7 @@ export function SopWriter() {
             <input type="checkbox" className="mt-0.5 h-4 w-4 accent-indigo-600" checked={s.autoWrite} onChange={(e) => { setEdited(null); setS((x) => ({ ...x, autoWrite: e.target.checked })); }} />
             <span><b>✨ Write the other sections automatically</b>: “why this course / university / country”, “why not study at home” and career plans are written from your course, qualifications and jobs. Anything you type below replaces the automatic text.</span>
           </label>
-          <EduJobEditors s={s} setList={setList} gaps={gaps} worker={worker} />
+          <EduJobEditors s={s} setList={setList} gaps={gaps} worker={worker} setAfterSchool={(v) => set("afterSchool", v)} />
           <TravelFamily s={s} update={(p) => { setEdited(null); setS((x) => ({ ...x, ...p })); }} />
           {sections.map((sec) => (
             <section key={sec.section}>
@@ -303,7 +339,17 @@ export function SopWriter() {
           <div className={`card ${review.verdict === "error" ? "border-rose-300" : review.verdict === "warning" ? "border-amber-300" : "border-emerald-300"}`}>
             <h3 className="font-bold">{review.verdict === "ok" ? "✅ Ready" : review.verdict === "error" ? "❌ Fix before using" : "⚠️ Can be improved"}</h3>
             <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto text-sm">
-              {missing > 0 && <li className="text-rose-700">❌ {missing} [placeholder(s)] still need your real information.</li>}
+              {missing > 0 && (
+                <li className="text-rose-700">
+                  ❌ Blanks still to fill ({missing}):
+                  <span className="mt-1 flex flex-wrap gap-1.5">
+                    {[...new Set(text.match(/\[[^\]]+\]/g) ?? [])].map((b) => (
+                      <span key={b} className="chip bg-rose-100 text-rose-800">{b}</span>
+                    ))}
+                  </span>
+                  <span className="mt-1 block text-xs text-slate-500">Fill the matching field on the left (or type straight into the SOP). [Date] is filled when you sign.</span>
+                </li>
+              )}
               {review.issues.filter((x) => x.problem !== "Unfilled placeholder / blank" && x.problem !== "No date found").map((x, k) => (
                 <li key={k} className={x.severity === "error" ? "text-rose-700" : x.severity === "warning" ? "text-amber-700" : "text-slate-600"}>
                   {x.severity === "error" ? "❌" : x.severity === "warning" ? "⚠️" : "💡"} {x.problem}{x.found ? `: “${x.found.slice(0, 80)}”` : ""}{x.replaceWith ? ` → ${x.replaceWith}` : ""}
@@ -319,7 +365,7 @@ export function SopWriter() {
 }
 
 /** Repeatable lists: academic qualifications (with certificate) and work experience (with experience letter). */
-function EduJobEditors({ s, setList, gaps, worker }: { s: SopInput; setList: <K extends "education" | "jobs">(k: K, list: SopInput[K]) => void; gaps: string[]; worker: boolean }) {
+function EduJobEditors({ s, setList, gaps, worker, setAfterSchool }: { s: SopInput; setList: <K extends "education" | "jobs">(k: K, list: SopInput[K]) => void; gaps: string[]; worker: boolean; setAfterSchool: (v: string) => void }) {
   const upEdu = (i: number, p: Partial<EduEntry>) => setList("education", s.education.map((e, j) => (j === i ? { ...e, ...p } : e)));
   const upJob = (i: number, p: Partial<JobEntry>) => setList("jobs", s.jobs.map((e, j) => (j === i ? { ...e, ...p } : e)));
   const jobsBlock = (
@@ -378,6 +424,9 @@ function EduJobEditors({ s, setList, gaps, worker }: { s: SopInput; setList: <K 
           </div>
         ))}
         <button type="button" className="btn-ghost w-full" onClick={() => setList("education", [...s.education, { ...EMPTY_EDU }])}>+ Add qualification</button>
+        <label className="block text-xs text-slate-500">After school: what you did before higher studies (coaching, first job, reasons for delay)
+          <textarea className="input mt-1 min-h-20" placeholder="e.g. After school I coached junior cricket and rugby at Lumbini College and worked in sales and marketing of sports equipment at Suprimo Sports, which delayed my higher studies." value={s.afterSchool ?? ""} onChange={(ev) => setAfterSchool(ev.target.value)} />
+        </label>
       </div>
     </section>
   );
