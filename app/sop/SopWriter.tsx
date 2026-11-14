@@ -293,9 +293,10 @@ export function SopWriter() {
         <div className="space-y-3 lg:sticky lg:top-20 lg:self-start">
           <div className="flex flex-wrap items-center gap-2">
             <button className="btn-primary" onClick={async () => downloadBytes(await textToPdf(text, { size: 12, spacing: 1.5, headings: true, pageNumbers: true }), `${(s.fullName || "SOP").replace(/\W+/g, "-")}-SOP.pdf`)}>⬇ Download PDF</button>
-            <button className="btn-ghost" onClick={() => navigator.clipboard.writeText(text).then(() => setMsg("Copied."))}>📋 Copy</button>
+            <button className="btn-ghost" onClick={() => navigator.clipboard.writeText(text.replace(/\*\*/g, "")).then(() => setMsg("Copied."))}>📋 Copy</button>
             {ai && <button className="btn-ghost" disabled={busy} onClick={polish}>{busy ? "Writing…" : "✨ Improve with AI"}</button>}
             {edited !== null && <button className="btn-ghost" onClick={() => setEdited(null)}>↺ Reset to generated</button>}
+            <span className="w-full text-[11px] text-slate-400">Text between ** ** is printed in bold in the PDF.</span>
             <span className="ml-auto text-xs text-slate-500">{wordCount(text)} words · ≈ {estimatePages(text)} pages · {missing} to fill</span>
           </div>
           <textarea className="min-h-[560px] w-full rounded-2xl border border-line bg-white p-6 font-serif text-[15px] leading-relaxed shadow-xl outline-none" value={text} onChange={(e) => setEdited(e.target.value)} />

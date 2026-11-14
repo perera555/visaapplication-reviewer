@@ -79,7 +79,7 @@ export const EMPTY_SOP: SopInput = {
   autoWrite: true, trips: [], travelNone: false, family: { father: "", mother: "", brothers: "", sisters: "", position: "", marital: "", children: "", spouseJob: "", relativesAbroad: "", livesWith: "" },
   destEmployer: "", destRole: "", destSalary: "", destStart: "", destContract: "", sponsorRef: "", whyEmployer: "", destAddress: "",
   education: [], jobs: [], travelHistory: "",
-  fullName: "", nationality: "", homeCity: "", age: "", country: "", countryCode: "",
+  fullName: "", nationality: "Sri Lanka", homeCity: "", age: "", country: "", countryCode: "",
   level: "", course: "", university: "", universityAddress: "", intake: "", duration: "", finalProject: "",
   targetCompanies: [], nicheCompanies: [], salaryCurrency: "", salaryPeriod: "per month", salaryLocal: "", salaryOverseasMin: "", salaryOverseasMax: "", salarySource: "",
   prevDegree: "", prevInstitution: "", prevYear: "", prevResult: "", prevSubjects: "",
@@ -118,7 +118,7 @@ type FieldType = "text" | "textarea" | "select" | "country";
 type FieldDef = [keyof SopInput, string, FieldType, string[]?];
 type Section = { section: string; fields: FieldDef[] };
 
-const ABOUT: Section = { section: "About you", fields: [["fullName", "Full name (as in passport)", "text"], ["nationality", "Nationality", "country"], ["homeCity", "Home city / country", "text"], ["age", "Age", "text"]] };
+const ABOUT: Section = { section: "About you", fields: [["fullName", "Full name (as in passport)", "text"], ["nationality", "Home country (where you will return)", "country"], ["homeCity", "Home city / country", "text"], ["age", "Age", "text"]] };
 const OTHER: Section = { section: "Other (optional)", fields: [["gaps", "Explain any study / work gaps", "textarea"], ["refusals", "Previous visa refusals and what changed", "textarea"], ["achievements", "Achievements, awards, volunteering", "textarea"], ["extra", "Anything else", "textarea"]] };
 
 /** Fields for students (SOP / Genuine Student / study plan). Education & jobs are edited as lists. */

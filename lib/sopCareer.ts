@@ -95,7 +95,7 @@ const FIELD_NAME: Record<CareerField, string> = {
 };
 
 const list = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs[0] ?? "");
-const money = (cur: string, v: string) => `${cur ? cur + " " : ""}${v.trim()}`;
+const money = (cur: string, v: string) => `**${cur ? cur + " " : ""}${v.trim()}**`;
 
 /** Full career section: market, employers, salaries, goals and return. */
 export function composeCareer(i: SopInput, shortGoalText: string, longGoalText: string): string {

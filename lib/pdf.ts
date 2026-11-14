@@ -16,7 +16,7 @@ function wrap(text: string, font: PDFFont, size: number, width: number) {
     let line = "";
     for (const word of para.trim().split(/\s+/)) {
       const test = line ? `${line} ${word}` : `${lead}${word}`;
-      if (font.widthOfTextAtSize(test, size) > width && line) {
+      if (font.widthOfTextAtSize(test.replace(/\*\*/g, ""), size) > width && line) {
         out.push(line);
         line = `${lead}${word}`;
       } else line = test;
@@ -48,6 +48,7 @@ export async function textToPdf(text: string, opts: { title?: string; size?: num
     y = page.getHeight() - margin;
   };
   const paras = safe(text).split("\n");
+  let boldOn = false;
   for (let p = 0; p < paras.length; p++) {
     const raw = paras[p];
     const heading = opts.headings && isHeading(raw.trim()) && (paras[p + 1] ?? "").trim().length > 0 && !/^\[?Date/.test(raw);
@@ -56,7 +57,19 @@ export async function textToPdf(text: string, opts: { title?: string; size?: num
     if (heading) y -= lh * 0.4;
     for (const line of wrap(raw, f, size, width)) {
       if (y < margin) newPage();
-      if (line) page.drawText(line, { x: margin, y, size, font: f });
+      if (line) {
+        // inline **bold** segments (bold state carries across wrapped lines)
+        let x = margin;
+        for (const part of line.split("**")) {
+          if (part) {
+            const pf = boldOn ? bold : f;
+            page.drawText(part, { x, y, size, font: pf });
+            x += pf.widthOfTextAtSize(part, size);
+          }
+          boldOn = !boldOn;
+        }
+        boldOn = !boldOn; // undo the toggle after the last segment
+      }
       y -= line ? lh : lh * 0.6;
     }
   }
